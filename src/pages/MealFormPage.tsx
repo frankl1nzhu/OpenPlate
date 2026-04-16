@@ -5,8 +5,8 @@ import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { multiplyNutrients, sumNutrients } from '../lib/utils'
-import { NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
-import type { MealFood, Nutrients } from '../types'
+import { NUTRIENT_LABELS, NUTRIENT_UNITS, MACRO_KEYS, EMPTY_NUTRIENTS } from '../types'
+import type { MealFood } from '../types'
 
 export default function MealFormPage() {
   const { id } = useParams()
@@ -61,7 +61,7 @@ export default function MealFormPage() {
   const totalNutrients = sumNutrients(
     ...mealFoods.map((mf) => {
       const food = foods.find((f) => f.id === mf.foodId)
-      if (!food) return { calories: 0, carbs: 0, completeProtein: 0, incompleteProtein: 0, fat: 0, fiber: 0, sodium: 0 }
+      if (!food) return { ...EMPTY_NUTRIENTS }
       return multiplyNutrients(food.nutrientsPerUnit, mf.quantity)
     }),
   )
@@ -80,18 +80,20 @@ export default function MealFormPage() {
         photoURL = await uploadPhoto(compressed, path)
       }
 
-      const mealData = {
+      const mealData: Record<string, unknown> = {
         name,
         foods: mealFoods,
-        photoURL,
         createdBy: user.uid,
         createdAt: existing?.createdAt ?? Date.now(),
       }
+      if (photoURL) {
+        mealData.photoURL = photoURL
+      }
 
       if (existing) {
-        await updateMeal(existing.id, mealData)
+        await updateMeal(existing.id, mealData as Partial<typeof existing>)
       } else {
-        await addMeal(mealData)
+        await addMeal(mealData as Omit<typeof existing & { id: string }, 'id'>)
       }
 
       navigate('/meals')
@@ -212,7 +214,7 @@ export default function MealFormPage() {
           <div className="bg-emerald-50 rounded-lg p-3">
             <h3 className="text-sm font-medium text-emerald-700 mb-2">套餐总营养</h3>
             <div className="grid grid-cols-2 gap-1">
-              {(Object.keys(NUTRIENT_LABELS) as (keyof Nutrients)[]).map((key) => (
+              {MACRO_KEYS.map((key) => (
                 <div key={key} className="flex justify-between text-xs">
                   <span className="text-gray-600">{NUTRIENT_LABELS[key]}</span>
                   <span className="font-medium">

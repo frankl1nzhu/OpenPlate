@@ -4,6 +4,7 @@ import { useMealStore } from '../store/mealStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useAuthStore } from '../store/authStore'
 import { multiplyNutrients, sumNutrients } from '../lib/utils'
+import { EMPTY_NUTRIENTS } from '../types'
 import type { Nutrients } from '../types'
 
 interface Props {
@@ -40,13 +41,13 @@ export default function AddEntryModal({ onClose }: Props) {
       const mealNutrients = sumNutrients(
         ...selectedMeal.foods.map((mf) => {
           const food = foods.find((f) => f.id === mf.foodId)
-          if (!food) return { calories: 0, carbs: 0, completeProtein: 0, incompleteProtein: 0, fat: 0, fiber: 0, sodium: 0 }
+          if (!food) return { ...EMPTY_NUTRIENTS }
           return multiplyNutrients(food.nutrientsPerUnit, mf.quantity)
         }),
       )
       return multiplyNutrients(mealNutrients, quantity)
     }
-    return { calories: 0, carbs: 0, completeProtein: 0, incompleteProtein: 0, fat: 0, fiber: 0, sodium: 0 }
+    return { ...EMPTY_NUTRIENTS }
   }
 
   const handleAdd = async () => {
@@ -114,14 +115,17 @@ export default function AddEntryModal({ onClose }: Props) {
               <button
                 key={food.id}
                 onClick={() => setSelectedId(food.id)}
-                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${selectedId === food.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
-                  }`}
+                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
+                  selectedId === food.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
+                }`}
               >
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm shrink-0">
-                  {food.photoURL ? (
-                    <img src={food.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                  ) : food.name[0]}
-                </div>
+                {food.photoURL ? (
+                  <img src={food.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm shrink-0">
+                    {food.name[0]}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{food.name}</div>
                   <div className="text-xs text-gray-400">
@@ -140,14 +144,17 @@ export default function AddEntryModal({ onClose }: Props) {
               <button
                 key={meal.id}
                 onClick={() => setSelectedId(meal.id)}
-                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${selectedId === meal.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
-                  }`}
+                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
+                  selectedId === meal.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
+                }`}
               >
-                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 text-sm shrink-0">
-                  {meal.photoURL ? (
-                    <img src={meal.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                  ) : meal.name[0]}
-                </div>
+                {meal.photoURL ? (
+                  <img src={meal.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 text-sm shrink-0">
+                    {meal.name[0]}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{meal.name}</div>
                   <div className="text-xs text-gray-400">{meal.foods.length} 种食物</div>

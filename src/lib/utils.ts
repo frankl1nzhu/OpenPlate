@@ -1,30 +1,22 @@
 import type { Nutrients } from '../types'
+import { ALL_NUTRIENT_KEYS, EMPTY_NUTRIENTS } from '../types'
 
 export function multiplyNutrients(nutrients: Nutrients, multiplier: number): Nutrients {
-  return {
-    calories: Math.round(nutrients.calories * multiplier * 10) / 10,
-    carbs: Math.round(nutrients.carbs * multiplier * 10) / 10,
-    completeProtein: Math.round(nutrients.completeProtein * multiplier * 10) / 10,
-    incompleteProtein: Math.round(nutrients.incompleteProtein * multiplier * 10) / 10,
-    fat: Math.round(nutrients.fat * multiplier * 10) / 10,
-    fiber: Math.round(nutrients.fiber * multiplier * 10) / 10,
-    sodium: Math.round(nutrients.sodium * multiplier * 10) / 10,
+  const result = { ...EMPTY_NUTRIENTS }
+  for (const key of ALL_NUTRIENT_KEYS) {
+    result[key] = Math.round((nutrients[key] || 0) * multiplier * 10) / 10
   }
+  return result
 }
 
 export function sumNutrients(...items: Nutrients[]): Nutrients {
-  return items.reduce(
-    (acc, n) => ({
-      calories: acc.calories + n.calories,
-      carbs: acc.carbs + n.carbs,
-      completeProtein: acc.completeProtein + n.completeProtein,
-      incompleteProtein: acc.incompleteProtein + n.incompleteProtein,
-      fat: acc.fat + n.fat,
-      fiber: acc.fiber + n.fiber,
-      sodium: acc.sodium + n.sodium,
-    }),
-    { calories: 0, carbs: 0, completeProtein: 0, incompleteProtein: 0, fat: 0, fiber: 0, sodium: 0 },
-  )
+  const result = { ...EMPTY_NUTRIENTS }
+  for (const n of items) {
+    for (const key of ALL_NUTRIENT_KEYS) {
+      result[key] += n[key] || 0
+    }
+  }
+  return result
 }
 
 export function formatDate(date: Date): string {
@@ -32,4 +24,15 @@ export function formatDate(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
+}
+
+// Clean undefined values for Firestore (Firestore rejects undefined)
+export function cleanForFirestore<T extends Record<string, unknown>>(obj: T): T {
+  const cleaned = { ...obj }
+  for (const key of Object.keys(cleaned)) {
+    if (cleaned[key] === undefined) {
+      delete cleaned[key]
+    }
+  }
+  return cleaned
 }

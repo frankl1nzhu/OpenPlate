@@ -5,8 +5,8 @@ import { useMealStore } from '../store/mealStore'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
 import { sumNutrients } from '../lib/utils'
-import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS } from '../types'
-import type { Nutrients, LogEntry } from '../types'
+import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS } from '../types'
+import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 
 export default function DailyLogPage() {
@@ -25,17 +25,26 @@ export default function DailyLogPage() {
 
   const targets = goal?.targets ?? EMPTY_NUTRIENTS
 
+  const getEntryRef = (entry: LogEntry): Food | Meal | undefined => {
+    if (entry.type === 'food') return foods.find((f) => f.id === entry.refId)
+    return meals.find((m) => m.id === entry.refId)
+  }
+
   const getEntryName = (entry: LogEntry) => {
-    if (entry.type === 'food') {
-      return foods.find((f) => f.id === entry.refId)?.name ?? '未知食物'
-    }
-    return meals.find((m) => m.id === entry.refId)?.name ?? '未知套餐'
+    const ref = getEntryRef(entry)
+    if (!ref) return entry.type === 'food' ? '未知食物' : '未知套餐'
+    return ref.name
+  }
+
+  const getEntryPhoto = (entry: LogEntry): string | undefined => {
+    const ref = getEntryRef(entry)
+    return ref?.photoURL
   }
 
   const getEntryUnit = (entry: LogEntry) => {
     if (entry.type === 'food') {
       const food = foods.find((f) => f.id === entry.refId)
-      return food ? `${food.defaultQuantity}${food.unit}` : ''
+      return food ? `× ${food.defaultQuantity}${food.unit}` : ''
     }
     return '份'
   }
@@ -62,6 +71,9 @@ export default function DailyLogPage() {
     if (pct <= 100) return 'bg-emerald-500'
     return 'bg-amber-500'
   }
+
+  // Only show progress bars for macro keys that have targets set
+  const activeGoalKeys = MACRO_KEYS.filter((k) => (targets[k] || 0) > 0)
 
   return (
     <div className="pb-20">
@@ -109,23 +121,21 @@ export default function DailyLogPage() {
         </div>
 
         {/* Progress bars */}
-        {targets.calories > 0 && (
+        {activeGoalKeys.length > 0 && (
           <div className="space-y-1.5">
-            {(Object.keys(NUTRIENT_LABELS) as (keyof Nutrients)[]).map((key) => (
-              targets[key] > 0 && (
-                <div key={key} className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-16 shrink-0">{NUTRIENT_LABELS[key]}</span>
-                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${getProgressColor(key)}`}
-                      style={{ width: `${Math.min(100, getProgress(key))}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-400 w-20 text-right">
-                    {Math.round(totalNutrients[key])}/{Math.round(targets[key])} {NUTRIENT_UNITS[key]}
-                  </span>
+            {activeGoalKeys.map((key) => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 w-16 shrink-0">{NUTRIENT_LABELS[key]}</span>
+                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden min-w-0">
+                  <div
+                    className={`h-full rounded-full transition-all ${getProgressColor(key)}`}
+                    style={{ width: `${Math.min(100, getProgress(key))}%` }}
+                  />
                 </div>
-              )
+                <span className="text-xs text-gray-400 shrink-0 tabular-nums whitespace-nowrap">
+                  {Math.round(totalNutrients[key])}/{Math.round(targets[key])}
+                </span>
+              </div>
             ))}
           </div>
         )}
@@ -153,31 +163,39 @@ export default function DailyLogPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100"
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm ${entry.type === 'food' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
-                  }`}>
-                  {entry.type === 'food' ? '食' : '餐'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{getEntryName(entry)}</div>
-                  <div className="text-xs text-gray-400">
-                    {entry.quantity} {getEntryUnit(entry)} · {Math.round(entry.nutrients.calories)} kcal
-                  </div>
-                </div>
-                <button
-                  onClick={() => user && removeEntry(user.uid, entry.id)}
-                  className="text-gray-300 p-1"
+            {entries.map((entry) => {
+              const photo = getEntryPhoto(entry)
+              return (
+                <div
+                  key={entry.id}
+                  className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+                  {photo ? (
+                    <img src={photo} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm shrink-0 ${
+                      entry.type === 'food' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
+                    }`}>
+                      {getEntryName(entry)[0] || (entry.type === 'food' ? '食' : '餐')}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{getEntryName(entry)}</div>
+                    <div className="text-xs text-gray-400">
+                      {entry.quantity} {getEntryUnit(entry)} · {Math.round(entry.nutrients.calories)} kcal
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => user && removeEntry(user.uid, entry.id)}
+                    className="text-gray-300 p-1 shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

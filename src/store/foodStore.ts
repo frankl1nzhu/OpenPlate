@@ -5,12 +5,12 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   query,
   orderBy,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { cleanForFirestore } from '../lib/utils'
 import type { Food } from '../types'
 
 interface FoodState {
@@ -18,7 +18,7 @@ interface FoodState {
   loading: boolean
   addFood: (food: Omit<Food, 'id'>) => Promise<string>
   updateFood: (id: string, data: Partial<Food>) => Promise<void>
-  deleteFood: (id: string) => Promise<void>
+  requestDelete: (foodId: string, foodName: string, userId: string) => Promise<void>
 }
 
 let unsubscribe: (() => void) | null = null
@@ -30,16 +30,22 @@ export const useFoodStore = create<FoodState>()(
       loading: true,
 
       addFood: async (food) => {
-        const docRef = await addDoc(collection(db, 'foods'), food)
+        const docRef = await addDoc(collection(db, 'foods'), cleanForFirestore(food as Record<string, unknown>))
         return docRef.id
       },
 
       updateFood: async (id, data) => {
-        await updateDoc(doc(db, 'foods', id), data)
+        await updateDoc(doc(db, 'foods', id), cleanForFirestore(data as Record<string, unknown>))
       },
 
-      deleteFood: async (id) => {
-        await deleteDoc(doc(db, 'foods', id))
+      requestDelete: async (foodId, foodName, userId) => {
+        await addDoc(collection(db, 'deleteRequests'), {
+          foodId,
+          foodName,
+          requestedBy: userId,
+          requestedAt: Date.now(),
+          status: 'pending',
+        })
       },
     }),
     { name: 'openplate-foods', partialize: (state) => ({ foods: state.foods }) },

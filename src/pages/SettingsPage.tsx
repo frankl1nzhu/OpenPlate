@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useGoalStore } from '../store/goalStore'
 import { useAuthStore } from '../store/authStore'
-import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS } from '../types'
+import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
 import type { Nutrients } from '../types'
 
 export default function SettingsPage() {
@@ -12,10 +12,13 @@ export default function SettingsPage() {
   const [targets, setTargets] = useState<Nutrients>({ ...EMPTY_NUTRIENTS })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showMicro, setShowMicro] = useState(false)
 
   useEffect(() => {
     if (goal?.targets) {
-      setTargets({ ...goal.targets })
+      setTargets({ ...EMPTY_NUTRIENTS, ...goal.targets })
+      const hasMicro = MICRO_KEYS.some((k) => ((goal.targets)[k] || 0) > 0)
+      if (hasMicro) setShowMicro(true)
     }
   }, [goal])
 
@@ -59,9 +62,42 @@ export default function SettingsPage() {
         <p className="text-xs text-gray-400">设置为 0 表示不追踪该指标</p>
 
         <div className="space-y-3">
-          {(Object.keys(NUTRIENT_LABELS) as (keyof Nutrients)[]).map((key) => (
+          <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
+          {MACRO_KEYS.map((key) => (
             <div key={key} className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-24 shrink-0">
+              <label className="text-sm text-gray-600 w-20 shrink-0">
+                {NUTRIENT_LABELS[key]}
+              </label>
+              <input
+                type="number"
+                value={targets[key] || ''}
+                onChange={(e) => handleChange(key, e.target.value)}
+                min={0}
+                step="any"
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="0"
+              />
+              <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => setShowMicro(!showMicro)}
+            className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase mt-2"
+          >
+            微量元素
+            <svg
+              className={`w-4 h-4 transition-transform ${showMicro ? 'rotate-180' : ''}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showMicro && MICRO_KEYS.map((key) => (
+            <div key={key} className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 w-20 shrink-0">
                 {NUTRIENT_LABELS[key]}
               </label>
               <input

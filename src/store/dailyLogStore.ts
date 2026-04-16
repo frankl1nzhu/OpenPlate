@@ -28,7 +28,8 @@ export const useDailyLogStore = create<DailyLogState>()(
       loading: true,
 
       setSelectedDate: (date) => {
-        set({ selectedDate: date })
+        // Clear current log immediately when switching dates to prevent stale data
+        set({ selectedDate: date, currentLog: null, loading: true })
       },
 
       addEntry: async (userId, entry) => {
@@ -58,14 +59,18 @@ export const useDailyLogStore = create<DailyLogState>()(
         })
       },
     }),
-    { name: 'openplate-dailylog', partialize: (state) => ({ currentLog: state.currentLog, selectedDate: state.selectedDate }) },
+    {
+      name: 'openplate-dailylog',
+      // Only persist selectedDate, NOT currentLog (prevents stale data across dates)
+      partialize: (state) => ({ selectedDate: state.selectedDate }),
+    },
   ),
 )
 
 export function subscribeDailyLog(userId: string, date: string) {
   unsubscribe?.()
   const docId = `${userId}_${date}`
-  useDailyLogStore.setState({ loading: true })
+  useDailyLogStore.setState({ loading: true, currentLog: null })
   unsubscribe = onSnapshot(doc(db, 'dailyLogs', docId), (snapshot) => {
     if (snapshot.exists()) {
       useDailyLogStore.setState({

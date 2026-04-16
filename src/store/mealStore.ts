@@ -11,6 +11,7 @@ import {
   orderBy,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { cleanForFirestore } from '../lib/utils'
 import type { Meal } from '../types'
 
 interface MealState {
@@ -30,12 +31,12 @@ export const useMealStore = create<MealState>()(
       loading: true,
 
       addMeal: async (meal) => {
-        const docRef = await addDoc(collection(db, 'meals'), meal)
+        const docRef = await addDoc(collection(db, 'meals'), cleanForFirestore(meal as Record<string, unknown>))
         return docRef.id
       },
 
       updateMeal: async (id, data) => {
-        await updateDoc(doc(db, 'meals', id), data)
+        await updateDoc(doc(db, 'meals', id), cleanForFirestore(data as Record<string, unknown>))
       },
 
       deleteMeal: async (id) => {
