@@ -114,9 +114,8 @@ export default function AddEntryModal({ onClose }: Props) {
               <button
                 key={food.id}
                 onClick={() => setSelectedId(food.id)}
-                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
-                  selectedId === food.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
-                }`}
+                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${selectedId === food.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
+                  }`}
               >
                 <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm shrink-0">
                   {food.photoURL ? (
@@ -141,9 +140,8 @@ export default function AddEntryModal({ onClose }: Props) {
               <button
                 key={meal.id}
                 onClick={() => setSelectedId(meal.id)}
-                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
-                  selectedId === meal.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
-                }`}
+                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${selectedId === meal.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
+                  }`}
               >
                 <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 text-sm shrink-0">
                   {meal.photoURL ? (

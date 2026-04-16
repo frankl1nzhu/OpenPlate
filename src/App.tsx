@@ -10,6 +10,7 @@ import MealListPage from './pages/MealListPage'
 import MealFormPage from './pages/MealFormPage'
 import SettingsPage from './pages/SettingsPage'
 import BottomNav from './components/BottomNav'
+import OfflineIndicator from './components/OfflineIndicator'
 import type { ReactNode } from 'react'
 
 function AuthGuard({ children }: { children: ReactNode }) {
@@ -54,6 +55,7 @@ function AppShell() {
 function App() {
   return (
     <BrowserRouter>
+      <OfflineIndicator />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

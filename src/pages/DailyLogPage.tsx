@@ -158,9 +158,8 @@ export default function DailyLogPage() {
                 key={entry.id}
                 className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100"
               >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm ${
-                  entry.type === 'food' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
-                }`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm ${entry.type === 'food' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
+                  }`}>
                   {entry.type === 'food' ? '食' : '餐'}
                 </div>
                 <div className="flex-1 min-w-0">
