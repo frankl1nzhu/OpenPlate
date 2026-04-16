@@ -5,6 +5,7 @@ import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { multiplyNutrients, sumNutrients } from '../lib/utils'
+import { useScrollLock } from '../hooks/useScrollLock'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, MACRO_KEYS, EMPTY_NUTRIENTS } from '../types'
 import type { MealFood } from '../types'
 
@@ -25,6 +26,8 @@ export default function MealFormPage() {
   const [showFoodPicker, setShowFoodPicker] = useState(false)
   const [foodSearch, setFoodSearch] = useState('')
 
+  useScrollLock(showFoodPicker)
+
   useEffect(() => {
     if (existing) {
       setName(existing.name)
@@ -36,6 +39,9 @@ export default function MealFormPage() {
   const handlePhoto = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      if (photoPreview && !photoPreview.startsWith('http')) {
+        URL.revokeObjectURL(photoPreview)
+      }
       setPhotoFile(file)
       setPhotoPreview(URL.createObjectURL(file))
     }
@@ -107,8 +113,13 @@ export default function MealFormPage() {
 
   const handleDelete = async () => {
     if (!existing || !confirm('确定删除这个套餐？')) return
-    await deleteMeal(existing.id)
-    navigate('/meals')
+    try {
+      await deleteMeal(existing.id)
+      navigate('/meals')
+    } catch (err) {
+      console.error(err)
+      alert('删除失败')
+    }
   }
 
   const filteredFoods = foods.filter((f) =>
@@ -118,7 +129,7 @@ export default function MealFormPage() {
   return (
     <div className="pb-8">
       <div className="sticky top-0 bg-white z-10 px-4 py-3 flex items-center gap-3 border-b border-gray-100">
-        <button onClick={() => navigate(-1)} className="text-gray-500">
+        <button onClick={() => navigate(-1)} className="text-gray-500 p-2 -ml-2" aria-label="返回">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>

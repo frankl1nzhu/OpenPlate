@@ -4,6 +4,7 @@ import { useMealStore } from '../store/mealStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useAuthStore } from '../store/authStore'
 import { multiplyNutrients, sumNutrients } from '../lib/utils'
+import { useScrollLock } from '../hooks/useScrollLock'
 import { EMPTY_NUTRIENTS } from '../types'
 import type { Nutrients } from '../types'
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function AddEntryModal({ onClose }: Props) {
+  useScrollLock(true)
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
   const { addEntry } = useDailyLogStore()

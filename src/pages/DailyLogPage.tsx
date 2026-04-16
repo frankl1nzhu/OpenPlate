@@ -79,7 +79,7 @@ export default function DailyLogPage() {
     <div className="pb-20">
       {/* Date selector */}
       <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100">
-        <button onClick={() => handleDateChange(-1)} className="p-1 text-gray-400">
+        <button onClick={() => handleDateChange(-1)} className="p-2 text-gray-400" aria-label="前一天">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -90,7 +90,7 @@ export default function DailyLogPage() {
           </div>
           {isToday && <div className="text-xs text-gray-400">{selectedDate}</div>}
         </div>
-        <button onClick={() => handleDateChange(1)} className="p-1 text-gray-400">
+        <button onClick={() => handleDateChange(1)} className="p-2 text-gray-400" aria-label="后一天">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
