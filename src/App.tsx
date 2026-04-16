@@ -8,6 +8,7 @@ import FoodListPage from './pages/FoodListPage'
 import FoodFormPage from './pages/FoodFormPage'
 import MealListPage from './pages/MealListPage'
 import MealFormPage from './pages/MealFormPage'
+import SettingsPage from './pages/SettingsPage'
 import BottomNav from './components/BottomNav'
 import type { ReactNode } from 'react'
 
@@ -43,24 +44,9 @@ function AppShell() {
         <Route path="/foods/:id" element={<FoodFormPage />} />
         <Route path="/meals" element={<MealListPage />} />
         <Route path="/meals/:id" element={<MealFormPage />} />
-        <Route path="/settings" element={<SettingsPlaceholder />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
       <BottomNav />
-    </div>
-  )
-}
-
-function SettingsPlaceholder() {
-  const { user, signOut } = useAuthStore()
-  return (
-    <div className="px-4 py-6">
-      <div className="text-center text-sm text-gray-500 mb-4">{user?.email}</div>
-      <button
-        onClick={signOut}
-        className="w-full py-2.5 text-red-500 font-medium rounded-lg border border-red-200"
-      >
-        退出登录
-      </button>
     </div>
   )
 }
