@@ -10,7 +10,9 @@ import MealListPage from './pages/MealListPage'
 import MealFormPage from './pages/MealFormPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminPage from './pages/AdminPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 import BottomNav from './components/BottomNav'
+import ScrollToTop from './components/ScrollToTop'
 import OfflineIndicator from './components/OfflineIndicator'
 import type { ReactNode } from 'react'
 
@@ -27,6 +29,10 @@ function AuthGuard({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (!user.emailVerified) {
+    return <Navigate to="/verify-email" replace />
   }
 
   return <>{children}</>
@@ -57,10 +63,12 @@ function AppShell() {
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <OfflineIndicator />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route
           path="/*"
           element={

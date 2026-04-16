@@ -48,11 +48,10 @@ export default function DailyLogPage() {
 
   const getEntryUnit = (entry: LogEntry) => {
     if (entry.type === 'quick') return ''
-    if (entry.type === 'food') {
-      const food = foods.find((f) => f.id === entry.refId)
-      return food ? `× ${food.defaultQuantity}${food.unit}` : ''
-    }
-    return '份'
+    if (entry.unit) return entry.unit
+    if (entry.type === 'meal') return '份'
+    const food = foods.find((f) => f.id === entry.refId)
+    return food ? `× ${food.defaultQuantity}${food.unit}` : ''
   }
 
   const handleDateChange = (offset: number) => {

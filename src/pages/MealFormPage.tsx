@@ -4,7 +4,7 @@ import { useMealStore } from '../store/mealStore'
 import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
 import { uploadPhoto, compressImage } from '../lib/storage'
-import { multiplyNutrients, sumNutrients } from '../lib/utils'
+import { sumNutrients, getFoodUnits, calculateFoodNutrients } from '../lib/utils'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, MACRO_KEYS, EMPTY_NUTRIENTS } from '../types'
 import type { MealFood } from '../types'
@@ -49,7 +49,11 @@ export default function MealFormPage() {
 
   const addFoodToMeal = (foodId: string) => {
     if (mealFoods.some((mf) => mf.foodId === foodId)) return
-    setMealFoods([...mealFoods, { foodId, quantity: 1 }])
+    const food = foods.find((f) => f.id === foodId)
+    const units = food ? getFoodUnits(food) : []
+    const defaultUnit = units[0]?.name || food?.unit || 'g'
+    const defaultQty = food?.defaultQuantity || 1
+    setMealFoods([...mealFoods, { foodId, quantity: defaultQty, unit: defaultUnit }])
     setShowFoodPicker(false)
     setFoodSearch('')
   }
@@ -57,6 +61,12 @@ export default function MealFormPage() {
   const updateQuantity = (index: number, quantity: number) => {
     const updated = [...mealFoods]
     updated[index] = { ...updated[index], quantity }
+    setMealFoods(updated)
+  }
+
+  const updateUnit = (index: number, unit: string) => {
+    const updated = [...mealFoods]
+    updated[index] = { ...updated[index], unit, quantity: 1 }
     setMealFoods(updated)
   }
 
@@ -68,7 +78,7 @@ export default function MealFormPage() {
     ...mealFoods.map((mf) => {
       const food = foods.find((f) => f.id === mf.foodId)
       if (!food) return { ...EMPTY_NUTRIENTS }
-      return multiplyNutrients(food.nutrientsPerUnit, mf.quantity)
+      return calculateFoodNutrients(food, mf.quantity, mf.unit)
     }),
   )
 
@@ -127,7 +137,7 @@ export default function MealFormPage() {
   )
 
   return (
-    <div className="pb-8">
+    <div className="pb-24">
       <div className="sticky top-0 bg-white z-10 px-4 py-3 flex items-center gap-3 border-b border-gray-100">
         <button onClick={() => navigate(-1)} className="text-gray-500 p-2 -ml-2" aria-label="返回">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,11 +197,11 @@ export default function MealFormPage() {
               {mealFoods.map((mf, index) => {
                 const food = foods.find((f) => f.id === mf.foodId)
                 if (!food) return null
+                const units = getFoodUnits(food)
                 return (
                   <div key={mf.foodId} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{food.name}</div>
-                      <div className="text-xs text-gray-400">每{food.defaultQuantity}{food.unit}</div>
                     </div>
                     <div className="flex items-center gap-1">
                       <input
@@ -202,7 +212,19 @@ export default function MealFormPage() {
                         step="any"
                         className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                       />
-                      <span className="text-xs text-gray-400">份</span>
+                      {units.length > 1 ? (
+                        <select
+                          value={mf.unit || units[0].name}
+                          onChange={(e) => updateUnit(index, e.target.value)}
+                          className="px-1 py-1 border border-gray-300 rounded text-sm bg-white"
+                        >
+                          {units.map((u) => (
+                            <option key={u.name} value={u.name}>{u.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-gray-400">{mf.unit || food.unit}</span>
+                      )}
                     </div>
                     <button
                       type="button"

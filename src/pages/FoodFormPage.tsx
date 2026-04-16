@@ -4,7 +4,7 @@ import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
-import type { Nutrients } from '../types'
+import type { Nutrients, FoodUnit } from '../types'
 
 export default function FoodFormPage() {
   const { id } = useParams()
@@ -15,10 +15,11 @@ export default function FoodFormPage() {
   const existing = id && id !== 'new' ? foods.find((f) => f.id === id) : null
 
   const [name, setName] = useState('')
-  const [unit, setUnit] = useState('g')
-  const [defaultQuantity, setDefaultQuantity] = useState(100)
+  const [baseUnit, setBaseUnit] = useState('g')
+  const [baseAmount, setBaseAmount] = useState(100)
+  const [extraUnits, setExtraUnits] = useState<{ name: string; grams: number }[]>([])
   const [isCompleteProtein, setIsCompleteProtein] = useState(false)
-  const [protein, setProtein] = useState(0) // single protein input
+  const [protein, setProtein] = useState(0)
   const [nutrients, setNutrients] = useState<Nutrients>({ ...EMPTY_NUTRIENTS })
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
@@ -28,18 +29,21 @@ export default function FoodFormPage() {
   useEffect(() => {
     if (existing) {
       setName(existing.name)
-      setUnit(existing.unit)
-      setDefaultQuantity(existing.defaultQuantity)
+      setBaseUnit(existing.unit)
+      setBaseAmount(existing.defaultQuantity)
       setIsCompleteProtein(existing.isCompleteProtein)
-      // Read protein from whichever field has value
       setProtein(existing.isCompleteProtein
         ? existing.nutrientsPerUnit.completeProtein
         : existing.nutrientsPerUnit.incompleteProtein)
       setNutrients({ ...existing.nutrientsPerUnit })
       if (existing.photoURL) setPhotoPreview(existing.photoURL)
-      // Show micro section if any micro value is set
       const hasMicro = MICRO_KEYS.some((k) => (existing.nutrientsPerUnit[k] || 0) > 0)
       if (hasMicro) setShowMicro(true)
+      // Load extra units (exclude base unit)
+      if (existing.units) {
+        const extras = existing.units.filter((u) => u.name !== existing.unit)
+        setExtraUnits(extras.map((u) => ({ name: u.name, grams: u.grams })))
+      }
     }
   }, [existing])
 
@@ -58,10 +62,42 @@ export default function FoodFormPage() {
     setNutrients((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }))
   }
 
-  // Visible macro keys, excluding completeProtein and incompleteProtein (handled by protein input)
   const visibleMacroKeys = MACRO_KEYS.filter(
     (k) => k !== 'completeProtein' && k !== 'incompleteProtein',
   )
+
+  const addExtraUnit = () => {
+    setExtraUnits([...extraUnits, { name: '', grams: 0 }])
+  }
+
+  const updateExtraUnit = (index: number, field: 'name' | 'grams', value: string) => {
+    const updated = [...extraUnits]
+    if (field === 'name') {
+      updated[index] = { ...updated[index], name: value }
+    } else {
+      updated[index] = { ...updated[index], grams: parseFloat(value) || 0 }
+    }
+    setExtraUnits(updated)
+  }
+
+  const removeExtraUnit = (index: number) => {
+    setExtraUnits(extraUnits.filter((_, i) => i !== index))
+  }
+
+  // Build the full units array
+  const buildUnits = (): FoodUnit[] => {
+    // Base unit: 1 base unit = 1 gram if base is "g"/"ml", else 1 base unit = baseAmount grams
+    const isGramLike = ['g', 'ml', 'kg', 'l', 'mg'].includes(baseUnit.toLowerCase())
+    const baseGrams = isGramLike ? 1 : baseAmount
+    const units: FoodUnit[] = [{ name: baseUnit, grams: baseGrams }]
+
+    for (const eu of extraUnits) {
+      if (eu.name.trim() && eu.grams > 0) {
+        units.push({ name: eu.name.trim(), grams: eu.grams })
+      }
+    }
+    return units
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -77,7 +113,6 @@ export default function FoodFormPage() {
         photoURL = await uploadPhoto(compressed, path)
       }
 
-      // Map protein to correct field based on checkbox
       const finalNutrients: Nutrients = {
         ...nutrients,
         completeProtein: isCompleteProtein ? protein : 0,
@@ -86,8 +121,9 @@ export default function FoodFormPage() {
 
       const foodData: Record<string, unknown> = {
         name,
-        unit,
-        defaultQuantity,
+        unit: baseUnit,
+        defaultQuantity: baseAmount,
+        units: buildUnits(),
         isCompleteProtein,
         nutrientsPerUnit: finalNutrients,
         createdBy: user.uid,
@@ -126,7 +162,7 @@ export default function FoodFormPage() {
   }
 
   return (
-    <div className="pb-8">
+    <div className="pb-24">
       <div className="sticky top-0 bg-white z-10 px-4 py-3 flex items-center gap-3 border-b border-gray-100">
         <button onClick={() => navigate(-1)} className="text-gray-500 p-2 -ml-2" aria-label="返回">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,36 +200,86 @@ export default function FoodFormPage() {
           />
         </div>
 
-        {/* Unit and quantity */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">默认数量</label>
+        {/* Base unit and amount */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">基准数量与单位</label>
+          <div className="flex gap-2">
             <input
               type="number"
-              value={defaultQuantity}
-              onChange={(e) => setDefaultQuantity(parseFloat(e.target.value) || 0)}
-              min={0}
+              value={baseAmount}
+              onChange={(e) => setBaseAmount(parseFloat(e.target.value) || 0)}
+              min={0.01}
               step="any"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">单位</label>
             <input
               type="text"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
+              value={baseUnit}
+              onChange={(e) => setBaseUnit(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="g / 个 / 杯"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="g / ml / 个"
             />
           </div>
+          <p className="text-xs text-gray-400 mt-1">下方营养素对应此数量</p>
+        </div>
+
+        {/* Extra units */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-700">换算单位</label>
+            <button
+              type="button"
+              onClick={addExtraUnit}
+              className="text-sm text-emerald-500 font-medium"
+            >
+              + 添加单位
+            </button>
+          </div>
+          {extraUnits.length === 0 ? (
+            <p className="text-xs text-gray-400">可添加额外单位，如 1个 = 50g</p>
+          ) : (
+            <div className="space-y-2">
+              {extraUnits.map((eu, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 shrink-0">1</span>
+                  <input
+                    type="text"
+                    value={eu.name}
+                    onChange={(e) => updateExtraUnit(index, 'name', e.target.value)}
+                    placeholder="个"
+                    className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-500 shrink-0">=</span>
+                  <input
+                    type="number"
+                    value={eu.grams || ''}
+                    onChange={(e) => updateExtraUnit(index, 'grams', e.target.value)}
+                    min={0.01}
+                    step="any"
+                    placeholder="50"
+                    className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-500 shrink-0">{baseUnit}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeExtraUnit(index)}
+                    className="text-red-400 p-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Macro nutrients */}
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-2">
-            每 {defaultQuantity}{unit} 宏量营养素
+            每 {baseAmount}{baseUnit} 营养素
           </h3>
           <div className="space-y-2">
             {visibleMacroKeys.map((key) => (

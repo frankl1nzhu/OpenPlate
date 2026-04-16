@@ -3,7 +3,7 @@ import { useFoodStore } from '../store/foodStore'
 import { useMealStore } from '../store/mealStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useAuthStore } from '../store/authStore'
-import { multiplyNutrients, sumNutrients } from '../lib/utils'
+import { multiplyNutrients, sumNutrients, getFoodUnits, calculateFoodNutrients } from '../lib/utils'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
 import type { Nutrients } from '../types'
@@ -22,6 +22,7 @@ export default function AddEntryModal({ onClose }: Props) {
   const [tab, setTab] = useState<'food' | 'meal' | 'quick'>('food')
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedUnit, setSelectedUnit] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [submitting, setSubmitting] = useState(false)
 
@@ -44,14 +45,14 @@ export default function AddEntryModal({ onClose }: Props) {
 
   const calculateNutrients = (): Nutrients => {
     if (selectedFood) {
-      return multiplyNutrients(selectedFood.nutrientsPerUnit, quantity)
+      return calculateFoodNutrients(selectedFood, quantity, selectedUnit || undefined)
     }
     if (selectedMeal) {
       const mealNutrients = sumNutrients(
         ...selectedMeal.foods.map((mf) => {
           const food = foods.find((f) => f.id === mf.foodId)
           if (!food) return { ...EMPTY_NUTRIENTS }
-          return multiplyNutrients(food.nutrientsPerUnit, mf.quantity)
+          return calculateFoodNutrients(food, mf.quantity, mf.unit)
         }),
       )
       return multiplyNutrients(mealNutrients, quantity)
@@ -71,6 +72,7 @@ export default function AddEntryModal({ onClose }: Props) {
         name,
         ...(photoURL ? { photoURL } : {}),
         quantity,
+        ...(tab === 'food' && selectedUnit ? { unit: selectedUnit } : {}),
         nutrients: calculateNutrients(),
         timestamp: Date.now(),
       })
@@ -123,12 +125,13 @@ export default function AddEntryModal({ onClose }: Props) {
   const switchTab = (t: 'food' | 'meal' | 'quick') => {
     setTab(t)
     setSelectedId(null)
+    setSelectedUnit('')
     setSearch('')
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-end">
-      <div className="bg-white w-full rounded-t-2xl max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+      <div className="bg-white w-full max-w-lg rounded-2xl max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h3 className="font-medium">添加记录</h3>
@@ -277,7 +280,12 @@ export default function AddEntryModal({ onClose }: Props) {
                 filteredFoods.map((food) => (
                   <button
                     key={food.id}
-                    onClick={() => setSelectedId(food.id)}
+                    onClick={() => {
+                      setSelectedId(food.id)
+                      const units = getFoodUnits(food)
+                      setSelectedUnit(units[0]?.name || food.unit)
+                      setQuantity(food.defaultQuantity)
+                    }}
                     className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
                       selectedId === food.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
                     }`}
@@ -345,11 +353,29 @@ export default function AddEntryModal({ onClose }: Props) {
                     step="any"
                     className="w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-center"
                   />
-                  <span className="text-sm text-gray-400">
-                    {tab === 'food' && selectedFood
-                      ? `× ${selectedFood.defaultQuantity}${selectedFood.unit}`
-                      : '份'}
-                  </span>
+                  {tab === 'food' && selectedFood ? (
+                    (() => {
+                      const units = getFoodUnits(selectedFood)
+                      return units.length > 1 ? (
+                        <select
+                          value={selectedUnit}
+                          onChange={(e) => {
+                            setSelectedUnit(e.target.value)
+                            setQuantity(1)
+                          }}
+                          className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+                        >
+                          {units.map((u) => (
+                            <option key={u.name} value={u.name}>{u.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-sm text-gray-500">{selectedUnit || selectedFood.unit}</span>
+                      )
+                    })()
+                  ) : (
+                    <span className="text-sm text-gray-400">份</span>
+                  )}
                   <span className="text-sm text-emerald-600 font-medium ml-auto">
                     {previewCalories} kcal
                   </span>

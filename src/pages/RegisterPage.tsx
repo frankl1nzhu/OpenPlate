@@ -21,7 +21,7 @@ export default function RegisterPage() {
     setSubmitting(true)
     try {
       await signUp(email, password)
-      navigate('/')
+      navigate('/verify-email')
     } catch {
       // error is set in store
     } finally {

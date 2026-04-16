@@ -155,21 +155,28 @@ export const NUTRIENT_UNITS: Record<keyof Nutrients, string> = {
   choline: 'mg',
 }
 
+export interface FoodUnit {
+  name: string    // "g", "个", "片"
+  grams: number   // grams equivalent of 1 of this unit
+}
+
 export interface Food {
   id: string
   name: string
   photoURL?: string
-  unit: string           // e.g., "g", "个", "杯"
-  defaultQuantity: number // default amount per unit
+  unit: string           // base unit name (e.g., "g")
+  defaultQuantity: number // base amount (e.g., 100 for "100g")
+  units?: FoodUnit[]     // multiple units with conversion
   isCompleteProtein: boolean
-  nutrientsPerUnit: Nutrients
-  createdBy: string      // user uid
-  createdAt: number      // timestamp
+  nutrientsPerUnit: Nutrients // nutrients for defaultQuantity of base unit
+  createdBy: string
+  createdAt: number
 }
 
 export interface MealFood {
   foodId: string
   quantity: number
+  unit?: string          // which unit was used
 }
 
 export interface Meal {
@@ -188,6 +195,7 @@ export interface LogEntry {
   name: string           // snapshot at log time
   photoURL?: string      // snapshot at log time
   quantity: number       // multiplier
+  unit?: string          // unit used when logging
   nutrients: Nutrients   // calculated at log time
   timestamp: number
 }

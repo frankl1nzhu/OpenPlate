@@ -5,7 +5,7 @@ import { useFoodStore } from '../store/foodStore'
 import { useMealStore } from '../store/mealStore'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, ALL_NUTRIENT_KEYS } from '../types'
 import type { Nutrients } from '../types'
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { DailyLog, LogEntry, Food, Meal } from '../types'
 
@@ -29,8 +29,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (goal?.targets) {
       setTargets({ ...EMPTY_NUTRIENTS, ...goal.targets })
-      const hasMicro = MICRO_KEYS.some((k) => ((goal.targets)[k] || 0) > 0)
-      if (hasMicro) setShowMicro(true)
     }
   }, [goal])
 
@@ -85,10 +83,10 @@ export default function SettingsPage() {
         where('userId', '==', user.uid),
         where('date', '>=', exportStart),
         where('date', '<=', exportEnd),
-        orderBy('date'),
       )
       const snapshot = await getDocs(q)
       const logs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as DailyLog))
+      logs.sort((a, b) => a.date.localeCompare(b.date))
 
       // Build CSV
       const nutrientKeys = ALL_NUTRIENT_KEYS
@@ -231,22 +229,22 @@ export default function SettingsPage() {
       <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
         <h3 className="text-sm font-bold text-gray-700">导出数据</h3>
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="min-w-0">
             <label className="block text-xs text-gray-500 mb-1">开始日期</label>
             <input
               type="date"
               value={exportStart}
               onChange={(e) => setExportStart(e.target.value)}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="block text-xs text-gray-500 mb-1">结束日期</label>
             <input
               type="date"
               value={exportEnd}
               onChange={(e) => setExportEnd(e.target.value)}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>

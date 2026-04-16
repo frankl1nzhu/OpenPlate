@@ -14,6 +14,7 @@
 
 import { initializeApp, cert, type ServiceAccount } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+import { readFileSync } from 'fs'
 
 const email = process.argv[2]
 
@@ -28,8 +29,9 @@ if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   process.exit(1)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const serviceAccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS) as ServiceAccount
+const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS as string
+const serviceAccount = JSON.parse(readFileSync(credentialsPath, 'utf8')) as ServiceAccount
+
 
 initializeApp({ credential: cert(serviceAccount) })
 

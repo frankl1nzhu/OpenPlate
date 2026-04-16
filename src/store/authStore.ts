@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
@@ -39,7 +40,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email, password) => {
     set({ error: null })
     try {
-      await createUserWithEmailAndPassword(auth, email, password)
+      const result = await createUserWithEmailAndPassword(auth, email, password)
+      await sendEmailVerification(result.user)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '注册失败'
       set({ error: msg })
