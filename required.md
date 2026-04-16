@@ -48,7 +48,34 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=你的MessagingSenderId
 VITE_FIREBASE_APP_ID=你的AppId
 ```
 
-## 5. 创建 Firestore 索引
+## 5. 部署 Firestore 规则
+
+**重要**：必须部署 Firestore 安全规则，否则删除申请等功能会提交失败。
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase deploy --only firestore:rules
+```
+
+或者手动在 Firebase Console > Firestore > Rules 中粘贴 `firestore.rules` 的内容并发布。
+
+## 6. 设置管理员（用于审批删除申请）
+
+管理员通过 Firebase Custom Claims 指定。需要下载 Service Account 密钥：
+
+1. Firebase Console > 项目设置 > 服务账号 > 生成新的私钥
+2. 下载 JSON 文件保存到安全位置
+
+运行管理员设置脚本：
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="path/to/serviceAccountKey.json"
+npx tsx scripts/setAdmin.ts user@example.com
+```
+
+设置后，用户需重新登录才能生效。管理员在底部导航栏会看到「管理」标签。
+
+## 7. 创建 Firestore 索引
 
 首次使用时，Firestore 会自动提示需要创建的复合索引。也可以手动创建：
 
@@ -56,8 +83,9 @@ VITE_FIREBASE_APP_ID=你的AppId
 2. 添加以下索引：
    - Collection: `foods`, Fields: `createdAt` (Descending)
    - Collection: `meals`, Fields: `createdAt` (Descending)
+   - Collection: `dailyLogs`, Fields: `userId` (Ascending), `date` (Ascending) — 导出功能需要
 
-## 6. 本地开发
+## 8. 本地开发
 
 ```bash
 npm install
@@ -66,7 +94,7 @@ npm run dev
 
 浏览器访问 `http://localhost:5173`
 
-## 7. 构建与部署
+## 9. 构建与部署
 
 ### 构建生产版本
 ```bash
@@ -89,7 +117,7 @@ firebase deploy
 将 `dist/` 目录部署到任意静态托管服务（Vercel, Netlify, Cloudflare Pages 等）。
 确保配置 SPA fallback（所有路由指向 `index.html`）。
 
-## 8. iPhone 添加到主屏幕
+## 10. iPhone 添加到主屏幕
 
 1. 在 iPhone Safari 中访问部署后的 URL
 2. 点击底部分享按钮（方框+箭头图标）
@@ -97,7 +125,7 @@ firebase deploy
 4. 确认名称后点击「添加」
 5. 从主屏幕图标打开即为全屏 PWA 模式
 
-## 9. 可选：Firebase Emulators（本地开发用）
+## 11. 可选：Firebase Emulators（本地开发用）
 
 如果想在本地测试而不连接线上 Firebase：
 

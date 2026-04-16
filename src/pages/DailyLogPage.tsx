@@ -5,7 +5,7 @@ import { useMealStore } from '../store/mealStore'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
 import { sumNutrients } from '../lib/utils'
-import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS } from '../types'
+import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 
@@ -14,7 +14,7 @@ export default function DailyLogPage() {
   const { currentLog, selectedDate, setSelectedDate, removeEntry, loading } = useDailyLogStore()
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
-  const { goal } = useGoalStore()
+  const { goal, showMicroOnHome } = useGoalStore()
   const [showAddModal, setShowAddModal] = useState(false)
 
   const entries = currentLog?.entries ?? []
@@ -25,23 +25,29 @@ export default function DailyLogPage() {
 
   const targets = goal?.targets ?? EMPTY_NUTRIENTS
 
+  // Prefer denormalized data, fall back to ref lookup for old entries
   const getEntryRef = (entry: LogEntry): Food | Meal | undefined => {
+    if (entry.type === 'quick') return undefined
     if (entry.type === 'food') return foods.find((f) => f.id === entry.refId)
     return meals.find((m) => m.id === entry.refId)
   }
 
   const getEntryName = (entry: LogEntry) => {
+    if (entry.name) return entry.name
+    if (entry.type === 'quick') return '快速记录'
     const ref = getEntryRef(entry)
     if (!ref) return entry.type === 'food' ? '未知食物' : '未知套餐'
     return ref.name
   }
 
   const getEntryPhoto = (entry: LogEntry): string | undefined => {
+    if (entry.photoURL) return entry.photoURL
     const ref = getEntryRef(entry)
     return ref?.photoURL
   }
 
   const getEntryUnit = (entry: LogEntry) => {
+    if (entry.type === 'quick') return ''
     if (entry.type === 'food') {
       const food = foods.find((f) => f.id === entry.refId)
       return food ? `× ${food.defaultQuantity}${food.unit}` : ''
@@ -72,8 +78,36 @@ export default function DailyLogPage() {
     return 'bg-amber-500'
   }
 
-  // Only show progress bars for macro keys that have targets set
   const activeGoalKeys = MACRO_KEYS.filter((k) => (targets[k] || 0) > 0)
+  const activeMicroKeys = showMicroOnHome ? MICRO_KEYS.filter((k) => (targets[k] || 0) > 0) : []
+
+  const renderProgressRow = (key: keyof Nutrients) => (
+    <div key={key} className="flex items-center gap-2">
+      <span className="text-xs text-gray-500 shrink-0">{NUTRIENT_LABELS[key]}</span>
+      <span className="text-xs text-gray-400 shrink-0 tabular-nums whitespace-nowrap" style={{ minWidth: '5.5rem' }}>
+        {Math.round(totalNutrients[key])}/{Math.round(targets[key])}
+      </span>
+      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden min-w-0">
+        <div
+          className={`h-full rounded-full transition-all ${getProgressColor(key)}`}
+          style={{ width: `${Math.min(100, getProgress(key))}%` }}
+        />
+      </div>
+    </div>
+  )
+
+  const getEntryIconClass = (type: string) => {
+    if (type === 'quick') return 'bg-blue-100 text-blue-600'
+    if (type === 'meal') return 'bg-orange-100 text-orange-600'
+    return 'bg-emerald-100 text-emerald-600'
+  }
+
+  const getEntryIconChar = (entry: LogEntry) => {
+    const name = getEntryName(entry)
+    if (name[0]) return name[0]
+    if (entry.type === 'quick') return '快'
+    return entry.type === 'food' ? '食' : '餐'
+  }
 
   return (
     <div className="pb-20">
@@ -120,23 +154,17 @@ export default function DailyLogPage() {
           </div>
         </div>
 
-        {/* Progress bars */}
+        {/* Macro progress bars */}
         {activeGoalKeys.length > 0 && (
           <div className="space-y-1.5">
-            {activeGoalKeys.map((key) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 w-16 shrink-0">{NUTRIENT_LABELS[key]}</span>
-                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden min-w-0">
-                  <div
-                    className={`h-full rounded-full transition-all ${getProgressColor(key)}`}
-                    style={{ width: `${Math.min(100, getProgress(key))}%` }}
-                  />
-                </div>
-                <span className="text-xs text-gray-400 shrink-0 tabular-nums whitespace-nowrap">
-                  {Math.round(totalNutrients[key])}/{Math.round(targets[key])}
-                </span>
-              </div>
-            ))}
+            {activeGoalKeys.map(renderProgressRow)}
+          </div>
+        )}
+
+        {/* Micro progress bars */}
+        {activeMicroKeys.length > 0 && (
+          <div className="space-y-1.5 mt-2 pt-2 border-t border-gray-100">
+            {activeMicroKeys.map(renderProgressRow)}
           </div>
         )}
       </div>
@@ -147,7 +175,8 @@ export default function DailyLogPage() {
           <h3 className="text-sm font-medium text-gray-700">饮食记录</h3>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+            disabled={loading}
+            className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
           >
             + 添加
           </button>
@@ -173,10 +202,8 @@ export default function DailyLogPage() {
                   {photo ? (
                     <img src={photo} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                   ) : (
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm shrink-0 ${
-                      entry.type === 'food' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
-                    }`}>
-                      {getEntryName(entry)[0] || (entry.type === 'food' ? '食' : '餐')}
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm shrink-0 ${getEntryIconClass(entry.type)}`}>
+                      {getEntryIconChar(entry)}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

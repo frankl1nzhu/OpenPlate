@@ -5,8 +5,9 @@ service cloud.firestore {
     match /foods/{foodId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null;
-      // Only admins can delete (via console or Cloud Functions)
-      allow delete: if false;
+      // Only admins can delete
+      allow delete: if request.auth != null
+        && request.auth.token.admin == true;
     }
 
     // Meals - shared across all users, any authenticated user can CRUD
@@ -16,13 +17,13 @@ service cloud.firestore {
       allow delete: if request.auth != null;
     }
 
-    // Delete requests - any authenticated user can create, only admin can update
+    // Delete requests - any authenticated user can create, only admin can update/delete
     match /deleteRequests/{requestId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.status == 'pending';
-      // Only admin can approve/reject (handle via Cloud Functions or console)
-      allow update, delete: if false;
+      allow update, delete: if request.auth != null
+        && request.auth.token.admin == true;
     }
 
     // Daily logs - only the owner can read/write

@@ -5,7 +5,7 @@ import { useDailyLogStore } from '../store/dailyLogStore'
 import { useAuthStore } from '../store/authStore'
 import { multiplyNutrients, sumNutrients } from '../lib/utils'
 import { useScrollLock } from '../hooks/useScrollLock'
-import { EMPTY_NUTRIENTS } from '../types'
+import { EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
 import type { Nutrients } from '../types'
 
 interface Props {
@@ -19,11 +19,18 @@ export default function AddEntryModal({ onClose }: Props) {
   const { addEntry } = useDailyLogStore()
   const user = useAuthStore((s) => s.user)
 
-  const [tab, setTab] = useState<'food' | 'meal'>('food')
+  const [tab, setTab] = useState<'food' | 'meal' | 'quick'>('food')
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [submitting, setSubmitting] = useState(false)
+
+  // Quick-add state
+  const [quickName, setQuickName] = useState('')
+  const [quickProtein, setQuickProtein] = useState(0)
+  const [quickIsComplete, setQuickIsComplete] = useState(false)
+  const [quickNutrients, setQuickNutrients] = useState<Nutrients>({ ...EMPTY_NUTRIENTS })
+  const [showQuickMicro, setShowQuickMicro] = useState(false)
 
   const filteredFoods = foods.filter((f) =>
     f.name.toLowerCase().includes(search.toLowerCase()),
@@ -56,9 +63,13 @@ export default function AddEntryModal({ onClose }: Props) {
     if (!user || !selectedId) return
     setSubmitting(true)
     try {
+      const name = selectedFood?.name || selectedMeal?.name || ''
+      const photoURL = selectedFood?.photoURL || selectedMeal?.photoURL
       await addEntry(user.uid, {
-        type: tab,
+        type: tab as 'food' | 'meal',
         refId: selectedId,
+        name,
+        ...(photoURL ? { photoURL } : {}),
         quantity,
         nutrients: calculateNutrients(),
         timestamp: Date.now(),
@@ -72,7 +83,48 @@ export default function AddEntryModal({ onClose }: Props) {
     }
   }
 
+  const handleQuickAdd = async () => {
+    if (!user || !quickName.trim()) return
+    setSubmitting(true)
+    try {
+      const nutrients: Nutrients = {
+        ...quickNutrients,
+        completeProtein: quickIsComplete ? quickProtein : 0,
+        incompleteProtein: quickIsComplete ? 0 : quickProtein,
+      }
+      await addEntry(user.uid, {
+        type: 'quick',
+        refId: '',
+        name: quickName.trim(),
+        quantity: 1,
+        nutrients,
+        timestamp: Date.now(),
+      })
+      onClose()
+    } catch (err) {
+      console.error(err)
+      alert('添加失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleQuickNutrient = (key: keyof Nutrients, value: string) => {
+    setQuickNutrients((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }))
+  }
+
+  // Visible macro keys for quick-add (exclude protein fields, handled separately)
+  const quickMacroKeys = MACRO_KEYS.filter(
+    (k) => k !== 'completeProtein' && k !== 'incompleteProtein',
+  )
+
   const previewCalories = Math.round(calculateNutrients().calories)
+
+  const switchTab = (t: 'food' | 'meal' | 'quick') => {
+    setTab(t)
+    setSelectedId(null)
+    setSearch('')
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end">
@@ -86,121 +138,232 @@ export default function AddEntryModal({ onClose }: Props) {
         {/* Tabs */}
         <div className="flex border-b border-gray-100 shrink-0">
           <button
-            onClick={() => { setTab('food'); setSelectedId(null); setSearch('') }}
+            onClick={() => switchTab('food')}
             className={`flex-1 py-2 text-sm font-medium ${tab === 'food' ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400'}`}
           >
             食物
           </button>
           <button
-            onClick={() => { setTab('meal'); setSelectedId(null); setSearch('') }}
+            onClick={() => switchTab('meal')}
             className={`flex-1 py-2 text-sm font-medium ${tab === 'meal' ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400'}`}
           >
             套餐
           </button>
+          <button
+            onClick={() => switchTab('quick')}
+            className={`flex-1 py-2 text-sm font-medium ${tab === 'quick' ? 'text-blue-600 border-b-2 border-blue-500' : 'text-gray-400'}`}
+          >
+            快速添加
+          </button>
         </div>
 
-        {/* Search */}
-        <div className="px-4 py-2 shrink-0">
-          <input
-            type="text"
-            placeholder={tab === 'food' ? '搜索食物...' : '搜索套餐...'}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none"
-          />
-        </div>
-
-        {/* List */}
-        <div className="flex-1 overflow-y-auto px-4">
-          {tab === 'food' ? (
-            filteredFoods.map((food) => (
-              <button
-                key={food.id}
-                onClick={() => setSelectedId(food.id)}
-                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
-                  selectedId === food.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
-                }`}
-              >
-                {food.photoURL ? (
-                  <img src={food.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm shrink-0">
-                    {food.name[0]}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{food.name}</div>
-                  <div className="text-xs text-gray-400">
-                    每{food.defaultQuantity}{food.unit} · {food.nutrientsPerUnit.calories} kcal
-                  </div>
-                </div>
-                {selectedId === food.id && (
-                  <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            ))
-          ) : (
-            filteredMeals.map((meal) => (
-              <button
-                key={meal.id}
-                onClick={() => setSelectedId(meal.id)}
-                className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
-                  selectedId === meal.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
-                }`}
-              >
-                {meal.photoURL ? (
-                  <img src={meal.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 text-sm shrink-0">
-                    {meal.name[0]}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{meal.name}</div>
-                  <div className="text-xs text-gray-400">{meal.foods.length} 种食物</div>
-                </div>
-                {selectedId === meal.id && (
-                  <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            ))
-          )}
-        </div>
-
-        {/* Quantity + confirm */}
-        {selectedId && (
-          <div className="px-4 py-3 border-t border-gray-100 shrink-0">
-            <div className="flex items-center gap-3 mb-3">
-              <label className="text-sm text-gray-600">数量</label>
+        {/* Quick-add form */}
+        {tab === 'quick' ? (
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">名称</label>
               <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-                min={0}
-                step="any"
-                className="w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-center"
+                type="text"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder="如：午餐外卖"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
               />
-              <span className="text-sm text-gray-400">
-                {tab === 'food' && selectedFood
-                  ? `× ${selectedFood.defaultQuantity}${selectedFood.unit}`
-                  : '份'}
-              </span>
-              <span className="text-sm text-emerald-600 font-medium ml-auto">
-                {previewCalories} kcal
-              </span>
             </div>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-700">营养素</h4>
+              {quickMacroKeys.map((key) => (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 w-16 shrink-0">{NUTRIENT_LABELS[key]}</label>
+                  <input
+                    type="number"
+                    value={quickNutrients[key] || ''}
+                    onChange={(e) => handleQuickNutrient(key, e.target.value)}
+                    min={0}
+                    max={99999}
+                    step="any"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+                </div>
+              ))}
+
+              {/* Protein with checkbox */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 w-16 shrink-0">蛋白质</label>
+                <input
+                  type="number"
+                  value={quickProtein || ''}
+                  onChange={(e) => setQuickProtein(parseFloat(e.target.value) || 0)}
+                  min={0}
+                  max={99999}
+                  step="any"
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-xs text-gray-400 w-10">g</span>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer pl-1">
+                <input
+                  type="checkbox"
+                  checked={quickIsComplete}
+                  onChange={(e) => setQuickIsComplete(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500"
+                />
+                <span className="text-xs text-gray-500">完全蛋白来源</span>
+              </label>
+
+              {/* Micronutrients */}
+              <button
+                type="button"
+                onClick={() => setShowQuickMicro(!showQuickMicro)}
+                className="flex items-center gap-1 text-sm font-medium text-gray-700"
+              >
+                微量元素
+                <svg
+                  className={`w-4 h-4 transition-transform ${showQuickMicro ? 'rotate-180' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showQuickMicro && (
+                <div className="space-y-2">
+                  {MICRO_KEYS.map((key) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <label className="text-sm text-gray-600 w-16 shrink-0">{NUTRIENT_LABELS[key]}</label>
+                      <input
+                        type="number"
+                        value={quickNutrients[key] || ''}
+                        onChange={(e) => handleQuickNutrient(key, e.target.value)}
+                        min={0}
+                        max={99999}
+                        step="any"
+                        className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button
-              onClick={handleAdd}
-              disabled={submitting}
-              className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50"
+              onClick={handleQuickAdd}
+              disabled={submitting || !quickName.trim()}
+              className="w-full py-2.5 bg-blue-500 text-white font-medium rounded-lg disabled:opacity-50"
             >
               {submitting ? '添加中...' : '确认添加'}
             </button>
           </div>
+        ) : (
+          <>
+            {/* Search */}
+            <div className="px-4 py-2 shrink-0">
+              <input
+                type="text"
+                placeholder={tab === 'food' ? '搜索食物...' : '搜索套餐...'}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none"
+              />
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto px-4">
+              {tab === 'food' ? (
+                filteredFoods.map((food) => (
+                  <button
+                    key={food.id}
+                    onClick={() => setSelectedId(food.id)}
+                    className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
+                      selectedId === food.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
+                    }`}
+                  >
+                    {food.photoURL ? (
+                      <img src={food.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm shrink-0">
+                        {food.name[0]}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{food.name}</div>
+                      <div className="text-xs text-gray-400">
+                        每{food.defaultQuantity}{food.unit} · {food.nutrientsPerUnit.calories} kcal
+                      </div>
+                    </div>
+                    {selectedId === food.id && (
+                      <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))
+              ) : (
+                filteredMeals.map((meal) => (
+                  <button
+                    key={meal.id}
+                    onClick={() => setSelectedId(meal.id)}
+                    className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${
+                      selectedId === meal.id ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''
+                    }`}
+                  >
+                    {meal.photoURL ? (
+                      <img src={meal.photoURL} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 text-sm shrink-0">
+                        {meal.name[0]}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{meal.name}</div>
+                      <div className="text-xs text-gray-400">{meal.foods.length} 种食物</div>
+                    </div>
+                    {selectedId === meal.id && (
+                      <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* Quantity + confirm */}
+            {selectedId && (
+              <div className="px-4 py-3 border-t border-gray-100 shrink-0">
+                <div className="flex items-center gap-3 mb-3">
+                  <label className="text-sm text-gray-600">数量</label>
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+                    min={0}
+                    step="any"
+                    className="w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-center"
+                  />
+                  <span className="text-sm text-gray-400">
+                    {tab === 'food' && selectedFood
+                      ? `× ${selectedFood.defaultQuantity}${selectedFood.unit}`
+                      : '份'}
+                  </span>
+                  <span className="text-sm text-emerald-600 font-medium ml-auto">
+                    {previewCalories} kcal
+                  </span>
+                </div>
+                <button
+                  onClick={handleAdd}
+                  disabled={submitting}
+                  className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50"
+                >
+                  {submitting ? '添加中...' : '确认添加'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

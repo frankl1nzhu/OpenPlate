@@ -9,6 +9,7 @@ import FoodFormPage from './pages/FoodFormPage'
 import MealListPage from './pages/MealListPage'
 import MealFormPage from './pages/MealFormPage'
 import SettingsPage from './pages/SettingsPage'
+import AdminPage from './pages/AdminPage'
 import BottomNav from './components/BottomNav'
 import OfflineIndicator from './components/OfflineIndicator'
 import type { ReactNode } from 'react'
@@ -46,6 +47,7 @@ function AppShell() {
         <Route path="/meals" element={<MealListPage />} />
         <Route path="/meals/:id" element={<MealFormPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
       <BottomNav />
     </div>

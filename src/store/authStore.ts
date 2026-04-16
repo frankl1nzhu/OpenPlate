@@ -10,6 +10,7 @@ import { auth } from '../lib/firebase'
 
 interface AuthState {
   user: User | null
+  isAdmin: boolean
   loading: boolean
   error: string | null
   signIn: (email: string, password: string) => Promise<void>
@@ -20,6 +21,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  isAdmin: false,
   loading: true,
   error: null,
 
@@ -53,6 +55,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 }))
 
 // Listen to auth state changes
-onAuthStateChanged(auth, (user) => {
-  useAuthStore.setState({ user, loading: false })
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const tokenResult = await user.getIdTokenResult()
+    const isAdmin = tokenResult.claims.admin === true
+    useAuthStore.setState({ user, isAdmin, loading: false })
+  } else {
+    useAuthStore.setState({ user: null, isAdmin: false, loading: false })
+  }
 })

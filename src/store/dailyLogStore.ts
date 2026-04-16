@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import {
   doc,
   onSnapshot,
-  setDoc,
+  runTransaction,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { DailyLog, LogEntry } from '../types'
@@ -28,40 +28,46 @@ export const useDailyLogStore = create<DailyLogState>()(
       loading: true,
 
       setSelectedDate: (date) => {
-        // Clear current log immediately when switching dates to prevent stale data
         set({ selectedDate: date, currentLog: null, loading: true })
       },
 
       addEntry: async (userId, entry) => {
         const date = get().selectedDate
         const docId = `${userId}_${date}`
-        const current = get().currentLog
         const newEntry: LogEntry = { ...entry, id: crypto.randomUUID() }
-        const entries = [...(current?.entries ?? []), newEntry]
+        const ref = doc(db, 'dailyLogs', docId)
 
-        await setDoc(doc(db, 'dailyLogs', docId), {
-          userId,
-          date,
-          entries,
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(ref)
+          const existing = snap.exists() ? (snap.data().entries as LogEntry[]) : []
+          tx.set(ref, { userId, date, entries: [...existing, newEntry] })
         })
+
+        // Optimistic local update
+        const current = get().currentLog
+        const entries = [...(current?.entries ?? []), newEntry]
+        set({ currentLog: { id: docId, userId, date, entries }, loading: false })
       },
 
       removeEntry: async (userId, entryId) => {
         const date = get().selectedDate
         const docId = `${userId}_${date}`
+        const ref = doc(db, 'dailyLogs', docId)
+
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(ref)
+          const existing = snap.exists() ? (snap.data().entries as LogEntry[]) : []
+          tx.set(ref, { userId, date, entries: existing.filter((e) => e.id !== entryId) })
+        })
+
+        // Optimistic local update
         const current = get().currentLog
         const entries = (current?.entries ?? []).filter((e) => e.id !== entryId)
-
-        await setDoc(doc(db, 'dailyLogs', docId), {
-          userId,
-          date,
-          entries,
-        })
+        set({ currentLog: { id: docId, userId, date, entries }, loading: false })
       },
     }),
     {
       name: 'openplate-dailylog',
-      // Only persist selectedDate, NOT currentLog (prevents stale data across dates)
       partialize: (state) => ({ selectedDate: state.selectedDate }),
     },
   ),
