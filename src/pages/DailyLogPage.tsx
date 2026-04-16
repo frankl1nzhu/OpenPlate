@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useFoodStore } from '../store/foodStore'
 import { useMealStore } from '../store/mealStore'
@@ -16,6 +16,7 @@ export default function DailyLogPage() {
   const { meals } = useMealStore()
   const { goal, showMicroOnHome } = useGoalStore()
   const [showAddModal, setShowAddModal] = useState(false)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const entries = currentLog?.entries ?? []
 
@@ -117,12 +118,22 @@ export default function DailyLogPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="text-center">
+        <button
+          onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+          className="text-center relative"
+        >
           <div className="text-sm font-medium">
             {isToday ? '今天' : selectedDate}
           </div>
           {isToday && <div className="text-xs text-gray-400">{selectedDate}</div>}
-        </div>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={selectedDate}
+            onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+          />
+        </button>
         <button onClick={() => handleDateChange(1)} className="p-2 text-gray-400" aria-label="后一天">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
