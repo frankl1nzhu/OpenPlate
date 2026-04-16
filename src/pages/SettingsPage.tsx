@@ -81,11 +81,11 @@ export default function SettingsPage() {
       const q = query(
         collection(db, 'dailyLogs'),
         where('userId', '==', user.uid),
-        where('date', '>=', exportStart),
-        where('date', '<=', exportEnd),
       )
       const snapshot = await getDocs(q)
-      const logs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as DailyLog))
+      const logs = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() } as DailyLog))
+        .filter((log) => log.date >= exportStart && log.date <= exportEnd)
       logs.sort((a, b) => a.date.localeCompare(b.date))
 
       // Build CSV
@@ -228,8 +228,8 @@ export default function SettingsPage() {
       {/* Export */}
       <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
         <h3 className="text-sm font-bold text-gray-700">导出数据</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="min-w-0">
+        <div className="space-y-2">
+          <div>
             <label className="block text-xs text-gray-500 mb-1">开始日期</label>
             <input
               type="date"
@@ -238,7 +238,7 @@ export default function SettingsPage() {
               className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
-          <div className="min-w-0">
+          <div>
             <label className="block text-xs text-gray-500 mb-1">结束日期</label>
             <input
               type="date"

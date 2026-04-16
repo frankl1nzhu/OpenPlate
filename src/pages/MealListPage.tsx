@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMealStore } from '../store/mealStore'
 import { useFoodStore } from '../store/foodStore'
 import { Link } from 'react-router-dom'
-import { sumNutrients, multiplyNutrients } from '../lib/utils'
+import { sumNutrients, calculateFoodNutrients } from '../lib/utils'
 
 export default function MealListPage() {
   const { meals, loading } = useMealStore()
@@ -17,8 +17,8 @@ export default function MealListPage() {
     const nutrientsList = meal.foods.map((mf) => {
       const food = foods.find((f) => f.id === mf.foodId)
       if (!food) return null
-      return multiplyNutrients(food.nutrientsPerUnit, mf.quantity)
-    }).filter(Boolean) as NonNullable<ReturnType<typeof multiplyNutrients>>[]
+      return calculateFoodNutrients(food, mf.quantity, mf.unit)
+    }).filter(Boolean) as NonNullable<ReturnType<typeof calculateFoodNutrients>>[]
     return sumNutrients(...nutrientsList).calories
   }
 
