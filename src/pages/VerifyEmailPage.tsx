@@ -7,17 +7,28 @@ export default function VerifyEmailPage() {
   const user = useAuthStore((s) => s.user)
   const { signOut } = useAuthStore()
   const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
 
   const handleResend = async () => {
     if (!auth.currentUser) return
     setSending(true)
     try {
       await sendEmailVerification(auth.currentUser)
-      setSent(true)
-      setTimeout(() => setSent(false), 5000)
-    } catch {
-      alert('发送失败，请稍后重试')
+      // 60s cooldown to match Firebase rate limit
+      setCooldown(60)
+      const timer = setInterval(() => {
+        setCooldown((c) => {
+          if (c <= 1) { clearInterval(timer); return 0 }
+          return c - 1
+        })
+      }, 1000)
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code
+      if (code === 'auth/too-many-requests') {
+        alert('发送过于频繁，请等几分钟后再试')
+      } else {
+        alert('发送失败，请稍后重试')
+      }
     } finally {
       setSending(false)
     }
@@ -53,10 +64,10 @@ export default function VerifyEmailPage() {
 
           <button
             onClick={handleResend}
-            disabled={sending || sent}
+            disabled={sending || cooldown > 0}
             className="w-full py-2.5 text-emerald-600 font-medium rounded-lg border border-emerald-200 hover:bg-emerald-50 disabled:opacity-50 transition-colors"
           >
-            {sending ? '发送中...' : sent ? '已发送' : '重新发送验证邮件'}
+            {sending ? '发送中...' : cooldown > 0 ? `重新发送 (${cooldown}s)` : '重新发送验证邮件'}
           </button>
 
           <button
