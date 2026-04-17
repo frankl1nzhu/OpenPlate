@@ -63,40 +63,38 @@ export function calculateExerciseCalories(
 
 /**
  * Generate recommended daily nutrient targets based on TDEE and body metrics.
- * Uses DRI (Dietary Reference Intakes) for micronutrients.
  *
  * Macros strategy:
- * - Protein: 2.2g/kg (heavy labor or regular exercise), 1.6g/kg otherwise; 80% complete, 20% incomplete; weight-based only
- * - Fat: 30% of total calories; saturated <30%, monounsaturated >=50%, polyunsaturated remainder
- * - Carbs: remaining calories
+ * - Protein: male 2.2g/kg, female 2.0g/kg (weight-based only); 80% complete, 20% incomplete
+ * - Fat: male 1.2g/kg, female 1.4g/kg (weight-based only); subtypes 30/50/20
+ * - Carbs: remaining calories after protein and fat
+ * - Fiber: total kcal / 1000 × 14 g
  */
 export function calculateRecommendedTargets(
   tdee: number,
   weightKg: number,
   gender: 'male' | 'female',
   age: number,
-  activityLevel: string = 'sedentary',
-  regularExercise: boolean = false,
 ): Nutrients {
-  // Protein: based on weight only, not calories
-  const isHighActivity = activityLevel === 'heavy' || regularExercise
-  const proteinPerKg = isHighActivity ? 2.2 : 1.6
+  // Protein: weight-based only
+  const proteinPerKg = gender === 'male' ? 2.2 : 2.0
   const totalProtein = Math.round(weightKg * proteinPerKg)
   const proteinCalories = totalProtein * 4
 
-  // Fat: 30% of TDEE
-  const fatCalories = tdee * 0.30
-  const totalFat = Math.round(fatCalories / 9)
-  const saturatedFat = Math.round(totalFat * 0.30)   // upper limit 30%
-  const monounsaturatedFat = Math.round(totalFat * 0.50) // at least 50%
-  const polyunsaturatedFat = Math.round(totalFat * 0.20) // remainder
+  // Fat: weight-based only
+  const fatPerKg = gender === 'male' ? 1.2 : 1.4
+  const totalFat = Math.round(weightKg * fatPerKg)
+  const fatCalories = totalFat * 9
+  const saturatedFat       = Math.round(totalFat * 0.30)
+  const monounsaturatedFat = Math.round(totalFat * 0.50)
+  const polyunsaturatedFat = Math.round(totalFat * 0.20)
 
-  // Carbs: remainder
+  // Carbs: remaining calories
   const carbCalories = tdee - proteinCalories - fatCalories
   const totalCarbs = Math.round(Math.max(0, carbCalories / 4))
 
-  // Fiber: Institute of Medicine recommendation
-  const fiber = gender === 'male' ? 30 : 25
+  // Fiber: tdee / 1000 × 14
+  const fiber = Math.round(tdee / 1000 * 14)
 
   // DRI micronutrients based on age and gender (adults 19-70)
   const isMale = gender === 'male'
@@ -104,53 +102,48 @@ export function calculateRecommendedTargets(
 
   return {
     ...EMPTY_NUTRIENTS,
-    calories: tdee,
+    calories: Math.round(proteinCalories + fatCalories + Math.max(0, carbCalories)),
     carbs: totalCarbs,
-    completeProtein: Math.round(totalProtein * 0.8),  // 80% complete protein
-    incompleteProtein: Math.round(totalProtein * 0.2), // 20% incomplete protein
+    completeProtein:   Math.round(totalProtein * 0.8),
+    incompleteProtein: Math.round(totalProtein * 0.2),
     fat: totalFat,
     saturatedFat,
     monounsaturatedFat,
     polyunsaturatedFat,
     fiber,
     sodium: 2300,
-    // Vitamins (DRI values)
-    vitaminA: isMale ? 900 : 700,           // μg RAE
-    vitaminC: isMale ? 90 : 75,             // mg
-    vitaminD: isOver50 ? 15 : 15,           // μg (600 IU)
-    vitaminE: 15,                            // mg
-    vitaminB1: isMale ? 1.2 : 1.1,          // mg
-    vitaminB2: isMale ? 1.3 : 1.1,          // mg
-    vitaminB6: isOver50 ? 1.7 : (isMale ? 1.3 : 1.3), // mg
-    vitaminB12: 2.4,                         // μg
-    folate: 400,                             // μg DFE
-    niacin: isMale ? 16 : 14,               // mg
-    pantothenicAcid: 5,                      // mg
-    biotin: 30,                              // μg
-    // Minerals (DRI values)
-    calcium: isOver50 ? 1200 : 1000,         // mg
-    iron: isMale ? 8 : (age < 51 ? 18 : 8), // mg
-    zinc: isMale ? 11 : 8,                   // mg
-    potassium: isMale ? 3400 : 2600,         // mg
-    magnesium: isMale ? (isOver50 ? 420 : 400) : (isOver50 ? 320 : 310), // mg
-    phosphorus: 700,                         // mg
-    selenium: 55,                            // μg
-    iodine: 150,                             // μg
-    copper: 0.9,                             // mg
-    manganese: isMale ? 2.3 : 1.8,          // mg
-    chromium: isMale ? 35 : 25,             // μg
-    molybdenum: 45,                          // μg
-    choline: isMale ? 550 : 425,             // mg
+    vitaminA: isMale ? 900 : 700,
+    vitaminC: isMale ? 90 : 75,
+    vitaminD: 15,
+    vitaminE: 15,
+    vitaminB1: isMale ? 1.2 : 1.1,
+    vitaminB2: isMale ? 1.3 : 1.1,
+    vitaminB6: isOver50 ? 1.7 : 1.3,
+    vitaminB12: 2.4,
+    folate: 400,
+    niacin: isMale ? 16 : 14,
+    pantothenicAcid: 5,
+    biotin: 30,
+    calcium: isOver50 ? 1200 : 1000,
+    iron: isMale ? 8 : (age < 51 ? 18 : 8),
+    zinc: isMale ? 11 : 8,
+    potassium: isMale ? 3400 : 2600,
+    magnesium: isMale ? (isOver50 ? 420 : 400) : (isOver50 ? 320 : 310),
+    phosphorus: 700,
+    selenium: 55,
+    iodine: 150,
+    copper: 0.9,
+    manganese: isMale ? 2.3 : 1.8,
+    chromium: isMale ? 35 : 25,
+    molybdenum: 45,
+    choline: isMale ? 550 : 425,
   }
 }
 
 /**
  * Adjust daily targets based on exercise calories burned and fitness goal.
- * Formula:
- * 1. New total calories = base + exercise + goal adjustment
- * 2. Fat → 30% of new total calories (preserve subtype ratios from base, or default 30/50/20)
- * 3. Carbs → (remaining calories after protein and fat) / 4
- * 4. Protein unchanged (weight-based)
+ * Fat and protein are weight-based and do NOT change.
+ * All extra (or reduced) calories are absorbed by carbs.
  */
 export function adjustTargetsForExercise(
   baseTargets: Nutrients,
@@ -162,30 +155,17 @@ export function adjustTargetsForExercise(
 
   const newCalories = baseTargets.calories + totalExtra
 
-  // Fat: 30% of new total calories
-  const newFatCalories = newCalories * 0.30
-  const newFat = Math.round(newFatCalories / 9)
-
-  // Fat subtypes: preserve ratios from base targets, or default 30/50/20
-  const baseFat = baseTargets.fat || 0
-  const satRatio   = baseFat > 0 ? (baseTargets.saturatedFat / baseFat)         : 0.30
-  const monoRatio  = baseFat > 0 ? (baseTargets.monounsaturatedFat / baseFat)    : 0.50
-  const polyRatio  = baseFat > 0 ? (baseTargets.polyunsaturatedFat / baseFat)    : 0.20
-
-  // Protein stays the same (weight-based, not calorie-based)
+  // Fat and protein stay fixed (weight-based)
+  const fatCalories     = baseTargets.fat * 9
   const proteinCalories = (baseTargets.completeProtein + baseTargets.incompleteProtein) * 4
 
-  // Carbs: remaining calories after protein and fat
-  const newCarbCalories = newCalories - proteinCalories - newFatCalories
+  // Carbs absorb the remainder
+  const newCarbCalories = newCalories - fatCalories - proteinCalories
   const newCarbs = Math.round(Math.max(0, newCarbCalories / 4))
 
   return {
     ...baseTargets,
     calories: Math.round(newCalories),
-    fat: newFat,
-    saturatedFat:        Math.round(newFat * satRatio),
-    monounsaturatedFat:  Math.round(newFat * monoRatio),
-    polyunsaturatedFat:  Math.round(newFat * polyRatio),
     carbs: newCarbs,
   }
 }

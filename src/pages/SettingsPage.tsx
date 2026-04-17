@@ -241,8 +241,6 @@ export default function SettingsPage() {
       profile.weightKg,
       profile.gender,
       profile.age,
-      profile.activityLevel || 'sedentary',
-      profile.regularExercise || false,
     )
     setRecommendedTargets(rec)
   }
