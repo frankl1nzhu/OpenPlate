@@ -150,8 +150,19 @@ export default function DailyLogPage() {
           onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
           className="text-center relative"
         >
-          <div className="text-sm font-medium">
-            {isToday ? '今天' : selectedDate}
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-medium">
+              {isToday ? '今天' : selectedDate}
+            </div>
+            {activeGoal && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                activeGoal.type === 'bulk' ? 'bg-blue-100 text-blue-600'
+                : activeGoal.type === 'cut' ? 'bg-orange-100 text-orange-600'
+                : 'bg-emerald-100 text-emerald-600'
+              }`}>
+                {FITNESS_GOAL_LABELS[activeGoal.type]}
+              </span>
+            )}
           </div>
           {isToday && <div className="text-xs text-gray-400">{selectedDate}</div>}
           <input
@@ -171,25 +182,6 @@ export default function DailyLogPage() {
 
       {/* Nutrient summary */}
       <div className="px-4 py-3 bg-white mb-2">
-        {/* Fitness goal */}
-        {activeGoal && (
-          <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-gray-100">
-            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-              activeGoal.type === 'bulk' ? 'bg-blue-100 text-blue-700'
-              : activeGoal.type === 'cut' ? 'bg-orange-100 text-orange-700'
-              : 'bg-emerald-100 text-emerald-700'
-            }`}>
-              {FITNESS_GOAL_LABELS[activeGoal.type]}
-            </span>
-            <span className="text-xs text-gray-400">{activeGoal.startDate} ~ {activeGoal.endDate}</span>
-            {calorieAdj !== 0 && (
-              <span className="text-xs text-purple-500 ml-auto font-medium">
-                {calorieAdj > 0 ? '+' : ''}{calorieAdj} kcal
-              </span>
-            )}
-          </div>
-        )}
-
         {/* Exercise calories */}
         {totalExerciseCalories > 0 && (
           <div className="text-center text-xs text-purple-500 mb-2.5">
