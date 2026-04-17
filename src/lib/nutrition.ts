@@ -146,28 +146,46 @@ export function calculateRecommendedTargets(
 
 /**
  * Adjust daily targets based on exercise calories burned and fitness goal.
- * - Exercise calories are added to the calorie target (eat more to compensate)
- * - Fitness goal adjustment is applied on top
- * - Extra calories distributed: protein stays constant, 25% fat / 75% carbs
+ * Formula:
+ * 1. New total calories = base + exercise + goal adjustment
+ * 2. Fat → 30% of new total calories (preserve subtype ratios from base, or default 30/50/20)
+ * 3. Carbs → (remaining calories after protein and fat) / 4
+ * 4. Protein unchanged (weight-based)
  */
 export function adjustTargetsForExercise(
   baseTargets: Nutrients,
   exerciseCalories: number,
   calorieAdjustment: number = 0,
 ): Nutrients {
-  const extraCalories = exerciseCalories + calorieAdjustment
-  if (extraCalories === 0) return baseTargets
+  const totalExtra = exerciseCalories + calorieAdjustment
+  if (totalExtra === 0) return baseTargets
 
-  const adjustedCalories = baseTargets.calories + extraCalories
+  const newCalories = baseTargets.calories + totalExtra
 
-  // Distribute extra calories: 25% fat, 75% carbs (protein unchanged)
-  const extraFatCalories = extraCalories * 0.25
-  const extraCarbCalories = extraCalories * 0.75
+  // Fat: 30% of new total calories
+  const newFatCalories = newCalories * 0.30
+  const newFat = Math.round(newFatCalories / 9)
+
+  // Fat subtypes: preserve ratios from base targets, or default 30/50/20
+  const baseFat = baseTargets.fat || 0
+  const satRatio   = baseFat > 0 ? (baseTargets.saturatedFat / baseFat)         : 0.30
+  const monoRatio  = baseFat > 0 ? (baseTargets.monounsaturatedFat / baseFat)    : 0.50
+  const polyRatio  = baseFat > 0 ? (baseTargets.polyunsaturatedFat / baseFat)    : 0.20
+
+  // Protein stays the same (weight-based, not calorie-based)
+  const proteinCalories = (baseTargets.completeProtein + baseTargets.incompleteProtein) * 4
+
+  // Carbs: remaining calories after protein and fat
+  const newCarbCalories = newCalories - proteinCalories - newFatCalories
+  const newCarbs = Math.round(Math.max(0, newCarbCalories / 4))
 
   return {
     ...baseTargets,
-    calories: Math.round(adjustedCalories),
-    fat: Math.round(baseTargets.fat + extraFatCalories / 9),
-    carbs: Math.round(baseTargets.carbs + extraCarbCalories / 4),
+    calories: Math.round(newCalories),
+    fat: newFat,
+    saturatedFat:        Math.round(newFat * satRatio),
+    monounsaturatedFat:  Math.round(newFat * monoRatio),
+    polyunsaturatedFat:  Math.round(newFat * polyRatio),
+    carbs: newCarbs,
   }
 }

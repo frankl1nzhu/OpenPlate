@@ -97,7 +97,16 @@ export default function SettingsPage() {
 
   const handleChange = (key: keyof Nutrients, value: string) => {
     const num = parseFloat(value) || 0
-    setTargets((prev) => ({ ...prev, [key]: Math.min(num, 99999) }))
+    setTargets((prev) => {
+      const updated = { ...prev, [key]: Math.min(num, 99999) }
+      // Auto-compute calories from macros (not directly editable)
+      updated.calories = Math.round(
+        (updated.completeProtein + updated.incompleteProtein) * 4
+        + updated.fat * 9
+        + updated.carbs * 4,
+      )
+      return updated
+    })
     setSaved(false)
   }
 
@@ -543,7 +552,18 @@ export default function SettingsPage() {
 
             <div className="space-y-3">
               <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
-              {MACRO_KEYS.map((key) => (
+
+              {/* Calories: read-only, computed from macros */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 w-24 shrink-0">热量</label>
+                <div className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 tabular-nums">
+                  {Math.round(targets.calories) || 0}
+                </div>
+                <span className="text-xs text-gray-400 w-10">kcal</span>
+              </div>
+              <p className="text-xs text-gray-400 -mt-1">由碳水、蛋白质、脂肪自动计算</p>
+
+              {MACRO_KEYS.filter((k) => k !== 'calories').map((key) => (
                 <div key={key} className="flex items-center gap-2">
                   <label className="text-sm text-gray-600 w-24 shrink-0">
                     {NUTRIENT_LABELS[key]}
