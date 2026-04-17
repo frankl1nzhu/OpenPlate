@@ -8,11 +8,12 @@ import { sumNutrients, getFoodUnits, calculateFoodNutrients } from '../lib/utils
 import { useScrollLock } from '../hooks/useScrollLock'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, MACRO_KEYS, EMPTY_NUTRIENTS } from '../types'
 import type { MealFood } from '../types'
+import DeleteReasonDialog from '../components/DeleteReasonDialog'
 
 export default function MealFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { meals, addMeal, updateMeal, deleteMeal } = useMealStore()
+  const { meals, addMeal, updateMeal, requestDeleteMeal } = useMealStore()
   const { foods } = useFoodStore()
   const user = useAuthStore((s) => s.user)
 
@@ -25,6 +26,7 @@ export default function MealFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [showFoodPicker, setShowFoodPicker] = useState(false)
   const [foodSearch, setFoodSearch] = useState('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   useScrollLock(showFoodPicker)
 
@@ -121,14 +123,15 @@ export default function MealFormPage() {
     }
   }
 
-  const handleDelete = async () => {
-    if (!existing || !confirm('确定删除这个套餐？')) return
+  const handleDelete = async (reason: string) => {
+    if (!existing || !user) return
     try {
-      await deleteMeal(existing.id)
+      await requestDeleteMeal(existing.id, existing.name, user.uid, reason)
+      alert('删除申请已提交，等待管理员审批')
       navigate('/meals')
     } catch (err) {
       console.error(err)
-      alert('删除失败')
+      alert('提交失败')
     }
   }
 
@@ -270,13 +273,26 @@ export default function MealFormPage() {
         {existing && (
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteDialog(true)}
             className="w-full py-2.5 text-red-500 font-medium rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
           >
-            删除套餐
+            申请删除
           </button>
         )}
       </form>
+
+      {existing && (
+        <DeleteReasonDialog
+          open={showDeleteDialog}
+          itemName={existing.name}
+          itemType="套餐"
+          onConfirm={(reason) => {
+            setShowDeleteDialog(false)
+            handleDelete(reason)
+          }}
+          onCancel={() => setShowDeleteDialog(false)}
+        />
+      )}
 
       {/* Food picker modal */}
       {showFoodPicker && (

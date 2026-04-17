@@ -4,27 +4,41 @@ import { useFoodStore } from '../store/foodStore'
 import { useMealStore } from '../store/mealStore'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
+import { useFitnessGoalStore } from '../store/fitnessGoalStore'
 import { sumNutrients } from '../lib/utils'
-import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
+import { adjustTargetsForExercise } from '../lib/nutrition'
+import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 
 export default function DailyLogPage() {
   const user = useAuthStore((s) => s.user)
-  const { currentLog, selectedDate, setSelectedDate, removeEntry, loading } = useDailyLogStore()
+  const { currentLog, selectedDate, setSelectedDate, removeEntry, removeExercise, loading } = useDailyLogStore()
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
   const { goal, showMicroOnHome } = useGoalStore()
+  const { getActiveGoal } = useFitnessGoalStore()
   const [showAddModal, setShowAddModal] = useState(false)
   const dateInputRef = useRef<HTMLInputElement>(null)
 
   const entries = currentLog?.entries ?? []
+  const exercises = currentLog?.exercises ?? []
 
   const totalNutrients = entries.length > 0
     ? sumNutrients(...entries.map((e) => e.nutrients))
     : { ...EMPTY_NUTRIENTS }
 
-  const targets = goal?.targets ?? EMPTY_NUTRIENTS
+  const baseTargets = goal?.targets ?? EMPTY_NUTRIENTS
+
+  // Calculate exercise calories and active fitness goal
+  const totalExerciseCalories = exercises.reduce((sum, ex) => sum + ex.caloriesBurned, 0)
+  const activeGoal = getActiveGoal(selectedDate)
+  const calorieAdj = activeGoal?.calorieAdjustment ?? 0
+
+  // Adjust targets: add exercise calories + fitness goal adjustment
+  const targets = (baseTargets.calories > 0 && (totalExerciseCalories > 0 || calorieAdj !== 0))
+    ? adjustTargetsForExercise(baseTargets, totalExerciseCalories, calorieAdj)
+    : baseTargets
 
   // Prefer denormalized data, fall back to ref lookup for old entries
   const getEntryRef = (entry: LogEntry): Food | Meal | undefined => {
@@ -122,8 +136,19 @@ export default function DailyLogPage() {
           onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
           className="text-center relative"
         >
-          <div className="text-sm font-medium">
-            {isToday ? '今天' : selectedDate}
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-medium">
+              {isToday ? '今天' : selectedDate}
+            </div>
+            {activeGoal && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                activeGoal.type === 'bulk' ? 'bg-blue-100 text-blue-600'
+                : activeGoal.type === 'cut' ? 'bg-orange-100 text-orange-600'
+                : 'bg-emerald-100 text-emerald-600'
+              }`}>
+                {FITNESS_GOAL_LABELS[activeGoal.type]}
+              </span>
+            )}
           </div>
           {isToday && <div className="text-xs text-gray-400">{selectedDate}</div>}
           <input
@@ -163,6 +188,18 @@ export default function DailyLogPage() {
             <div className="text-xs text-gray-400">脂肪 g</div>
           </div>
         </div>
+
+        {/* Exercise calorie summary */}
+        {totalExerciseCalories > 0 && (
+          <div className="text-center text-xs text-purple-500 mb-2">
+            运动消耗 {totalExerciseCalories} kcal
+            {calorieAdj !== 0 && (
+              <span className="ml-2">
+                目标调整 {calorieAdj > 0 ? '+' : ''}{calorieAdj} kcal
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Macro progress bars */}
         {activeGoalKeys.length > 0 && (
@@ -233,6 +270,53 @@ export default function DailyLogPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Exercise records */}
+      <div className="px-4 mt-2">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-700">运动记录</h3>
+          <button
+            onClick={() => setShowAddModal(true)}
+            disabled={loading}
+            className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            + 添加
+          </button>
+        </div>
+
+        {exercises.length === 0 ? (
+          <div className="text-center py-6 text-gray-400 text-sm">
+            今日还没有运动记录
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {exercises.map((ex) => (
+              <div
+                key={ex.id}
+                className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100"
+              >
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 text-sm shrink-0">
+                  {EXERCISE_TYPE_LABELS[ex.exerciseType]?.[0] || '动'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{EXERCISE_TYPE_LABELS[ex.exerciseType]}</div>
+                  <div className="text-xs text-gray-400">
+                    {ex.durationMinutes} 分钟 · {ex.caloriesBurned} kcal
+                  </div>
+                </div>
+                <button
+                  onClick={() => user && removeExercise(user.uid, ex.id)}
+                  className="text-gray-300 p-1 shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

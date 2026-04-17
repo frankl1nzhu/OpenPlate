@@ -10,11 +10,13 @@ service cloud.firestore {
         && request.auth.token.admin == true;
     }
 
-    // Meals - shared across all users, any authenticated user can CRUD
+    // Meals - shared across all users, any authenticated user can read/create/update
     match /meals/{mealId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null;
-      allow delete: if request.auth != null;
+      // Only admins can delete (requires approval like foods)
+      allow delete: if request.auth != null
+        && request.auth.token.admin == true;
     }
 
     // Delete requests - any authenticated user can create, only admin can update/delete
@@ -24,6 +26,14 @@ service cloud.firestore {
         && request.resource.data.status == 'pending';
       allow update, delete: if request.auth != null
         && request.auth.token.admin == true;
+    }
+
+    // User profiles - owner can read/write, admin can read all
+    match /userProfiles/{userId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == userId || request.auth.token.admin == true);
+      allow write: if request.auth != null
+        && request.auth.uid == userId;
     }
 
     // Daily logs - only the owner can read/write
@@ -38,6 +48,14 @@ service cloud.firestore {
     match /dailyGoals/{userId} {
       allow read, write: if request.auth != null
         && request.auth.uid == userId;
+    }
+
+    // Fitness goals - only the owner can read/write
+    match /fitnessGoals/{goalId} {
+      allow read, write: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
     }
   }
 }

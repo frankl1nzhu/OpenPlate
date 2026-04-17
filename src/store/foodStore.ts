@@ -18,7 +18,7 @@ interface FoodState {
   loading: boolean
   addFood: (food: Omit<Food, 'id'>) => Promise<string>
   updateFood: (id: string, data: Partial<Food>) => Promise<void>
-  requestDelete: (foodId: string, foodName: string, userId: string) => Promise<void>
+  requestDelete: (foodId: string, foodName: string, userId: string, reason: string) => Promise<void>
 }
 
 let unsubscribe: (() => void) | null = null
@@ -38,10 +38,12 @@ export const useFoodStore = create<FoodState>()(
         await updateDoc(doc(db, 'foods', id), cleanForFirestore(data as Record<string, unknown>))
       },
 
-      requestDelete: async (foodId, foodName, userId) => {
+      requestDelete: async (foodId, foodName, userId, reason) => {
         await addDoc(collection(db, 'deleteRequests'), {
-          foodId,
-          foodName,
+          type: 'food',
+          targetId: foodId,
+          targetName: foodName,
+          reason,
           requestedBy: userId,
           requestedAt: Date.now(),
           status: 'pending',

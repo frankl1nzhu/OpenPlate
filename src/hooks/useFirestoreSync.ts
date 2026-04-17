@@ -4,6 +4,8 @@ import { subscribeFoods, unsubscribeFoods } from '../store/foodStore'
 import { subscribeMeals, unsubscribeMeals } from '../store/mealStore'
 import { subscribeDailyLog, unsubscribeDailyLog, useDailyLogStore } from '../store/dailyLogStore'
 import { subscribeGoal, unsubscribeGoal } from '../store/goalStore'
+import { subscribeUserProfile, unsubscribeUserProfile } from '../store/userProfileStore'
+import { subscribeFitnessGoals, unsubscribeFitnessGoals } from '../store/fitnessGoalStore'
 
 export function useFirestoreSync() {
   const user = useAuthStore((s) => s.user)
@@ -15,17 +17,23 @@ export function useFirestoreSync() {
       unsubscribeMeals()
       unsubscribeDailyLog()
       unsubscribeGoal()
+      unsubscribeUserProfile()
+      unsubscribeFitnessGoals()
       return
     }
 
     subscribeFoods()
     subscribeMeals()
     subscribeGoal(user.uid)
+    subscribeUserProfile(user.uid)
+    subscribeFitnessGoals(user.uid)
 
     return () => {
       unsubscribeFoods()
       unsubscribeMeals()
       unsubscribeGoal()
+      unsubscribeUserProfile()
+      unsubscribeFitnessGoals()
     }
   }, [user])
 

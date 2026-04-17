@@ -205,6 +205,7 @@ export interface DailyLog {
   userId: string
   date: string           // YYYY-MM-DD
   entries: LogEntry[]
+  exercises: ExerciseEntry[]
 }
 
 export interface DailyGoal {
@@ -216,11 +217,82 @@ export interface DailyGoal {
 // 删除申请
 export interface DeleteRequest {
   id: string
-  foodId: string
-  foodName: string
-  requestedBy: string    // user uid
+  type: 'food' | 'meal'       // 删除类型
+  targetId: string             // food or meal id
+  targetName: string           // food or meal name
+  reason: string               // 删除原因
+  requestedBy: string          // user uid
   requestedAt: number
   status: 'pending' | 'approved' | 'rejected'
   reviewedBy?: string
   reviewedAt?: number
+}
+
+// 用户资料
+export interface UserProfile {
+  id: string              // same as userId
+  userId: string
+  nickname: string
+  email?: string          // 冗余存储，方便管理员查询
+  age?: number
+  gender?: 'male' | 'female'
+  weightKg?: number
+  heightCm?: number
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'heavy'
+}
+
+// 运动记录
+export type ExerciseType = 'running' | 'walking' | 'cycling' | 'swimming' | 'weight_training' | 'yoga' | 'hiit' | 'other'
+export type ExerciseIntensity = 'low' | 'moderate' | 'high'
+
+export interface ExerciseEntry {
+  id: string
+  exerciseType: ExerciseType
+  intensity: ExerciseIntensity
+  durationMinutes: number
+  caloriesBurned: number
+  manualCalories: boolean     // 是否手动输入
+  timestamp: number
+}
+
+export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
+  running: '跑步',
+  walking: '步行',
+  cycling: '骑行',
+  swimming: '游泳',
+  weight_training: '力量训练',
+  yoga: '瑜伽',
+  hiit: 'HIIT',
+  other: '其他',
+}
+
+export const EXERCISE_INTENSITY_LABELS: Record<ExerciseIntensity, string> = {
+  low: '低强度',
+  moderate: '中强度',
+  high: '高强度',
+}
+
+// 健身目标
+export type FitnessGoalType = 'bulk' | 'cut' | 'maintain'
+
+export interface FitnessGoal {
+  id: string
+  userId: string
+  startDate: string           // YYYY-MM-DD
+  endDate: string             // YYYY-MM-DD
+  type: FitnessGoalType
+  calorieAdjustment: number   // +300 增肌, -500 减脂, 0 保持 (可自定义)
+}
+
+export const FITNESS_GOAL_LABELS: Record<FitnessGoalType, string> = {
+  bulk: '增肌',
+  cut: '减脂',
+  maintain: '保持',
+}
+
+export const ACTIVITY_LEVEL_LABELS: Record<string, string> = {
+  sedentary: '久坐办公',
+  light: '轻度活动',
+  moderate: '中等活动',
+  heavy: '重体力劳动',
 }

@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
 import type { Nutrients, FoodUnit } from '../types'
+import DeleteReasonDialog from '../components/DeleteReasonDialog'
 
 export default function FoodFormPage() {
   const { id } = useParams()
@@ -25,6 +26,7 @@ export default function FoodFormPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [showMicro, setShowMicro] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   useEffect(() => {
     if (existing) {
@@ -148,11 +150,10 @@ export default function FoodFormPage() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (reason: string) => {
     if (!existing || !user) return
-    if (!confirm('将发送删除申请，管理员审批后才会删除。确定申请？')) return
     try {
-      await requestDelete(existing.id, existing.name, user.uid)
+      await requestDelete(existing.id, existing.name, user.uid, reason)
       alert('删除申请已提交，等待管理员审批')
       navigate('/foods')
     } catch (err) {
@@ -378,13 +379,26 @@ export default function FoodFormPage() {
         {existing && (
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteDialog(true)}
             className="w-full py-2.5 text-red-500 font-medium rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
           >
             申请删除
           </button>
         )}
       </form>
+
+      {existing && (
+        <DeleteReasonDialog
+          open={showDeleteDialog}
+          itemName={existing.name}
+          itemType="食物"
+          onConfirm={(reason) => {
+            setShowDeleteDialog(false)
+            handleDelete(reason)
+          }}
+          onCancel={() => setShowDeleteDialog(false)}
+        />
+      )}
     </div>
   )
 }
