@@ -163,9 +163,13 @@ export function adjustTargetsForExercise(
   const newCarbCalories = newCalories - fatCalories - proteinCalories
   const newCarbs = Math.round(Math.max(0, newCarbCalories / 4))
 
+  // Fiber: totalKcal / 1000 × 14
+  const newFiber = Math.round(newCalories / 1000 * 14)
+
   return {
     ...baseTargets,
     calories: Math.round(newCalories),
     carbs: newCarbs,
+    fiber: newFiber,
   }
 }
