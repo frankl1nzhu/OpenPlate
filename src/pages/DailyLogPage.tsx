@@ -7,7 +7,7 @@ import { useGoalStore } from '../store/goalStore'
 import { useFitnessGoalStore } from '../store/fitnessGoalStore'
 import { sumNutrients } from '../lib/utils'
 import { adjustTargetsForExercise } from '../lib/nutrition'
-import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
+import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 
@@ -16,7 +16,7 @@ export default function DailyLogPage() {
   const { currentLog, selectedDate, setSelectedDate, removeEntry, removeExercise, loading } = useDailyLogStore()
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
-  const { goal, showMicroOnHome } = useGoalStore()
+  const { goal, homeNutrientKeys } = useGoalStore()
   const { getActiveGoal } = useFitnessGoalStore()
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalTab, setAddModalTab] = useState<'food' | 'exercise'>('food')
@@ -93,12 +93,13 @@ export default function DailyLogPage() {
     return 'bg-amber-500'
   }
 
-  const activeGoalKeys = MACRO_KEYS.filter((k) => (targets[k] || 0) > 0)
-  const activeMicroKeys = showMicroOnHome ? MICRO_KEYS.filter((k) => (targets[k] || 0) > 0) : []
+  const activeNutrientKeys = homeNutrientKeys.length > 0
+    ? homeNutrientKeys.filter((k) => (targets[k] || 0) > 0)
+    : MACRO_KEYS.filter((k) => (targets[k] || 0) > 0)
 
   const renderProgressRow = (key: keyof Nutrients) => (
     <div key={key} className="flex items-center gap-2">
-      <span className="text-xs text-gray-500 shrink-0 w-16 text-right">{NUTRIENT_LABELS[key]}</span>
+      <span className="text-xs text-gray-500 shrink-0 w-20 text-right">{NUTRIENT_LABELS[key]}</span>
       <span className="text-xs text-gray-400 shrink-0 tabular-nums whitespace-nowrap w-24 text-right">
         {Math.round(totalNutrients[key])}/{Math.round(targets[key])}
       </span>
@@ -202,17 +203,29 @@ export default function DailyLogPage() {
           </div>
         )}
 
-        {/* Macro progress bars */}
-        {activeGoalKeys.length > 0 && (
-          <div className="space-y-1.5">
-            {activeGoalKeys.map(renderProgressRow)}
+        {/* Fitness goal details */}
+        {activeGoal && (
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+            <span className={`px-2 py-0.5 rounded-full font-medium ${
+              activeGoal.type === 'bulk' ? 'bg-blue-100 text-blue-600'
+              : activeGoal.type === 'cut' ? 'bg-orange-100 text-orange-600'
+              : 'bg-emerald-100 text-emerald-600'
+            }`}>
+              {FITNESS_GOAL_LABELS[activeGoal.type]}
+            </span>
+            <span>{activeGoal.startDate} ~ {activeGoal.endDate}</span>
+            {calorieAdj !== 0 && (
+              <span className="text-purple-500 font-medium">
+                {calorieAdj > 0 ? '+' : ''}{calorieAdj} kcal
+              </span>
+            )}
           </div>
         )}
 
-        {/* Micro progress bars */}
-        {activeMicroKeys.length > 0 && (
-          <div className="space-y-1.5 mt-2 pt-2 border-t border-gray-100">
-            {activeMicroKeys.map(renderProgressRow)}
+        {/* Nutrient progress bars */}
+        {activeNutrientKeys.length > 0 && (
+          <div className="space-y-1.5">
+            {activeNutrientKeys.map(renderProgressRow)}
           </div>
         )}
       </div>

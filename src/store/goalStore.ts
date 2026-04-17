@@ -8,9 +8,9 @@ import { EMPTY_NUTRIENTS } from '../types'
 interface GoalState {
   goal: DailyGoal | null
   loading: boolean
-  showMicroOnHome: boolean
+  homeNutrientKeys: (keyof Nutrients)[]
   setGoal: (userId: string, targets: Nutrients) => Promise<void>
-  setShowMicroOnHome: (show: boolean) => void
+  setHomeNutrientKeys: (keys: (keyof Nutrients)[]) => void
 }
 
 let unsubscribe: (() => void) | null = null
@@ -20,17 +20,17 @@ export const useGoalStore = create<GoalState>()(
     (_set, _get) => ({
       goal: null as DailyGoal | null,
       loading: true,
-      showMicroOnHome: false,
+      homeNutrientKeys: [] as (keyof Nutrients)[],
 
       setGoal: async (userId: string, targets: Nutrients) => {
         await setDoc(doc(db, 'dailyGoals', userId), { userId, targets })
       },
 
-      setShowMicroOnHome: (show: boolean) => {
-        _set({ showMicroOnHome: show })
+      setHomeNutrientKeys: (keys: (keyof Nutrients)[]) => {
+        _set({ homeNutrientKeys: keys })
       },
     }),
-    { name: 'openplate-goals', partialize: (state) => ({ goal: state.goal, showMicroOnHome: state.showMicroOnHome }) },
+    { name: 'openplate-goals', partialize: (state) => ({ goal: state.goal, homeNutrientKeys: state.homeNutrientKeys }) },
   ),
 )
 

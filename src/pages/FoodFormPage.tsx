@@ -285,7 +285,7 @@ export default function FoodFormPage() {
           <div className="space-y-2">
             {visibleMacroKeys.map((key) => (
               <div key={key} className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 w-20 shrink-0">
+                <label className="text-sm text-gray-600 w-24 shrink-0">
                   {NUTRIENT_LABELS[key]}
                 </label>
                 <input
@@ -302,7 +302,7 @@ export default function FoodFormPage() {
 
             {/* Protein row with checkbox */}
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-20 shrink-0">蛋白质</label>
+              <label className="text-sm text-gray-600 w-24 shrink-0">蛋白质</label>
               <input
                 type="number"
                 value={protein || ''}
@@ -349,7 +349,7 @@ export default function FoodFormPage() {
             <div className="space-y-2 mt-2">
               {MICRO_KEYS.map((key) => (
                 <div key={key} className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 w-20 shrink-0">
+                  <label className="text-sm text-gray-600 w-24 shrink-0">
                     {NUTRIENT_LABELS[key]}
                   </label>
                   <input

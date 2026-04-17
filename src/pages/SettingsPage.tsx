@@ -12,10 +12,12 @@ import { db } from '../lib/firebase'
 import type { DailyLog, LogEntry, Food, Meal } from '../types'
 import { calculateBMR, calculateTDEE, calculateRecommendedTargets } from '../lib/nutrition'
 
+const GENDER_LABELS: Record<string, string> = { male: '男', female: '女' }
+
 export default function SettingsPage() {
   const user = useAuthStore((s) => s.user)
   const { signOut } = useAuthStore()
-  const { goal, loading, setGoal, showMicroOnHome, setShowMicroOnHome } = useGoalStore()
+  const { goal, loading, setGoal, homeNutrientKeys, setHomeNutrientKeys } = useGoalStore()
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
   const { profile, setProfile } = useUserProfileStore()
@@ -30,6 +32,7 @@ export default function SettingsPage() {
   // Nickname state
   const [nickname, setNicknameState] = useState('')
   const [savingNickname, setSavingNickname] = useState(false)
+  const [editingNickname, setEditingNickname] = useState(false)
 
   // Personal info state
   const [infoAge, setInfoAge] = useState(0)
@@ -39,7 +42,7 @@ export default function SettingsPage() {
   const [infoActivity, setInfoActivity] = useState<'sedentary' | 'light' | 'moderate' | 'heavy'>('sedentary')
   const [infoRegularExercise, setInfoRegularExercise] = useState(false)
   const [savingInfo, setSavingInfo] = useState(false)
-  const [savedInfo, setSavedInfo] = useState(false)
+  const [editingInfo, setEditingInfo] = useState(false)
 
   // Smart recommendation state
   const [recommendedTargets, setRecommendedTargets] = useState<Nutrients | null>(null)
@@ -137,7 +140,6 @@ export default function SettingsPage() {
         .filter((log) => log.date >= exportStart && log.date <= exportEnd)
       logs.sort((a, b) => a.date.localeCompare(b.date))
 
-      // Build CSV
       const nutrientKeys = ALL_NUTRIENT_KEYS
       const headers = ['日期', '名称', '类型', '数量', ...nutrientKeys.map((k) => `${NUTRIENT_LABELS[k]} (${NUTRIENT_UNITS[k]})`)]
       const rows: string[][] = []
@@ -161,7 +163,6 @@ export default function SettingsPage() {
         .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(','))
         .join('\n')
 
-      // BOM for Excel Chinese support
       const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -181,11 +182,11 @@ export default function SettingsPage() {
     if (!user || !nickname.trim()) return
     setSavingNickname(true)
     try {
-      // Save nickname and email together in one call
       await setProfile(user.uid, {
         nickname: nickname.trim(),
         email: user.email || undefined,
       })
+      setEditingNickname(false)
     } catch (err) {
       console.error(err)
       alert('保存失败')
@@ -207,8 +208,7 @@ export default function SettingsPage() {
         regularExercise: infoRegularExercise,
         email: user.email || undefined,
       })
-      setSavedInfo(true)
-      setTimeout(() => setSavedInfo(false), 2000)
+      setEditingInfo(false)
     } catch (err) {
       console.error(err)
       alert('保存失败')
@@ -273,6 +273,24 @@ export default function SettingsPage() {
     }
   }
 
+  const toggleHomeNutrient = (key: keyof Nutrients) => {
+    const current = homeNutrientKeys.length > 0
+      ? homeNutrientKeys
+      : MACRO_KEYS.filter((k) => (targets[k] || 0) > 0)
+    if (current.includes(key)) {
+      setHomeNutrientKeys(current.filter((k) => k !== key))
+    } else {
+      setHomeNutrientKeys([...current, key])
+    }
+  }
+
+  const isNutrientOnHome = (key: keyof Nutrients) => {
+    if (homeNutrientKeys.length === 0) {
+      return MACRO_KEYS.includes(key) && (targets[key] || 0) > 0
+    }
+    return homeNutrientKeys.includes(key)
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -282,6 +300,7 @@ export default function SettingsPage() {
   }
 
   const hasGoalValues = MACRO_KEYS.some((k) => (targets[k] || 0) > 0)
+  const hasProfileInfo = profile?.age && profile?.gender && profile?.weightKg && profile?.heightCm
 
   return (
     <div className="pb-20 px-4 py-4">
@@ -291,117 +310,173 @@ export default function SettingsPage() {
 
       {/* Nickname */}
       <div className="mb-6 pb-4 border-b border-gray-200">
-        <h3 className="text-sm font-bold text-gray-700 mb-2">昵称</h3>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={nickname}
-            onChange={(e) => setNicknameState(e.target.value)}
-            placeholder="设置昵称"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <button
-            onClick={handleSaveNickname}
-            disabled={savingNickname || !nickname.trim()}
-            className="px-4 py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg disabled:opacity-50"
-          >
-            {savingNickname ? '...' : '保存'}
-          </button>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-gray-700">昵称</h3>
+          {!editingNickname && profile?.nickname && (
+            <button
+              type="button"
+              onClick={() => setEditingNickname(true)}
+              className="text-sm text-emerald-500 font-medium"
+            >
+              编辑
+            </button>
+          )}
         </div>
+        {!editingNickname && profile?.nickname ? (
+          <div className="text-sm text-gray-800">{profile.nickname}</div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => setNicknameState(e.target.value)}
+              placeholder="设置昵称"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              onClick={handleSaveNickname}
+              disabled={savingNickname || !nickname.trim()}
+              className="px-4 py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+            >
+              {savingNickname ? '...' : '保存'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Personal Info */}
       <div className="mb-6 pb-4 border-b border-gray-200 space-y-3">
-        <h3 className="text-sm font-bold text-gray-700">个人信息</h3>
-        <div className="space-y-3 bg-gray-50 rounded-xl p-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 w-20 shrink-0">年龄</label>
-            <input
-              type="number"
-              value={infoAge || ''}
-              onChange={(e) => setInfoAge(parseInt(e.target.value) || 0)}
-              min={1}
-              max={120}
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="0"
-            />
-            <span className="text-xs text-gray-400">岁</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 w-20 shrink-0">性别</label>
-            <div className="flex gap-2 flex-1">
-              <button
-                type="button"
-                onClick={() => setInfoGender('male')}
-                className={`flex-1 py-1.5 text-sm rounded-lg border ${infoGender === 'male' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
-              >
-                男
-              </button>
-              <button
-                type="button"
-                onClick={() => setInfoGender('female')}
-                className={`flex-1 py-1.5 text-sm rounded-lg border ${infoGender === 'female' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
-              >
-                女
-              </button>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-700">个人信息</h3>
+          {!editingInfo && hasProfileInfo && (
+            <button
+              type="button"
+              onClick={() => setEditingInfo(true)}
+              className="text-sm text-emerald-500 font-medium"
+            >
+              编辑
+            </button>
+          )}
+        </div>
+
+        {!editingInfo && hasProfileInfo ? (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-600">年龄</span>
+              <span className="text-sm font-medium text-gray-800">{profile!.age} 岁</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-600">性别</span>
+              <span className="text-sm font-medium text-gray-800">{GENDER_LABELS[profile!.gender!]}</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-600">体重</span>
+              <span className="text-sm font-medium text-gray-800">{profile!.weightKg} kg</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-600">身高</span>
+              <span className="text-sm font-medium text-gray-800">{profile!.heightCm} cm</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-600">工作类型</span>
+              <span className="text-sm font-medium text-gray-800">{ACTIVITY_LEVEL_LABELS[profile!.activityLevel || 'sedentary']}</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-600">规律锻炼</span>
+              <span className="text-sm font-medium text-gray-800">{profile!.regularExercise ? '是' : '否'}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 w-20 shrink-0">体重</label>
-            <input
-              type="number"
-              value={infoWeight || ''}
-              onChange={(e) => setInfoWeight(parseFloat(e.target.value) || 0)}
-              min={1}
-              step="0.1"
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="0"
-            />
-            <span className="text-xs text-gray-400">kg</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 w-20 shrink-0">身高</label>
-            <input
-              type="number"
-              value={infoHeight || ''}
-              onChange={(e) => setInfoHeight(parseFloat(e.target.value) || 0)}
-              min={1}
-              step="0.1"
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="0"
-            />
-            <span className="text-xs text-gray-400">cm</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 w-20 shrink-0">工作类型</label>
-            <select
-              value={infoActivity}
-              onChange={(e) => setInfoActivity(e.target.value as 'sedentary' | 'light' | 'moderate' | 'heavy')}
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        ) : (
+          <div className="space-y-3 bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 w-20 shrink-0">年龄</label>
+              <input
+                type="number"
+                value={infoAge || ''}
+                onChange={(e) => setInfoAge(parseInt(e.target.value) || 0)}
+                min={1}
+                max={120}
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="0"
+              />
+              <span className="text-xs text-gray-400">岁</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 w-20 shrink-0">性别</label>
+              <div className="flex gap-2 flex-1">
+                <button
+                  type="button"
+                  onClick={() => setInfoGender('male')}
+                  className={`flex-1 py-1.5 text-sm rounded-lg border ${infoGender === 'male' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
+                >
+                  男
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInfoGender('female')}
+                  className={`flex-1 py-1.5 text-sm rounded-lg border ${infoGender === 'female' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
+                >
+                  女
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 w-20 shrink-0">体重</label>
+              <input
+                type="number"
+                value={infoWeight || ''}
+                onChange={(e) => setInfoWeight(parseFloat(e.target.value) || 0)}
+                min={1}
+                step="0.1"
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="0"
+              />
+              <span className="text-xs text-gray-400">kg</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 w-20 shrink-0">身高</label>
+              <input
+                type="number"
+                value={infoHeight || ''}
+                onChange={(e) => setInfoHeight(parseFloat(e.target.value) || 0)}
+                min={1}
+                step="0.1"
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="0"
+              />
+              <span className="text-xs text-gray-400">cm</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 w-20 shrink-0">工作类型</label>
+              <select
+                value={infoActivity}
+                onChange={(e) => setInfoActivity(e.target.value as 'sedentary' | 'light' | 'moderate' | 'heavy')}
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {Object.entries(ACTIVITY_LEVEL_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={infoRegularExercise}
+                onChange={(e) => setInfoRegularExercise(e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-gray-600">规律锻炼</span>
+            </label>
+            <button
+              type="button"
+              onClick={handleSavePersonalInfo}
+              disabled={savingInfo}
+              className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg disabled:opacity-50"
             >
-              {Object.entries(ACTIVITY_LEVEL_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
+              {savingInfo ? '保存中...' : '保存个人信息'}
+            </button>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={infoRegularExercise}
-              onChange={(e) => setInfoRegularExercise(e.target.checked)}
-              className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
-            />
-            <span className="text-sm text-gray-600">规律锻炼</span>
-          </label>
-          <button
-            type="button"
-            onClick={handleSavePersonalInfo}
-            disabled={savingInfo}
-            className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg disabled:opacity-50"
-          >
-            {savingInfo ? '保存中...' : savedInfo ? '已保存' : '保存个人信息'}
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Daily Goals - display/edit mode */}
@@ -420,7 +495,6 @@ export default function SettingsPage() {
         </div>
 
         {!editingGoals && hasGoalValues ? (
-          /* Display mode */
           <div className="space-y-3">
             <div className="space-y-1">
               <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
@@ -461,7 +535,6 @@ export default function SettingsPage() {
             )}
           </div>
         ) : (
-          /* Edit mode */
           <>
             <p className="text-xs text-gray-400">设置为 0 表示不追踪该指标</p>
 
@@ -531,22 +604,47 @@ export default function SettingsPage() {
         )}
       </form>
 
-      {/* Show micro on home toggle */}
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <label className="flex items-center justify-between cursor-pointer">
-          <span className="text-sm text-gray-700">首页显示微量元素进度</span>
-          <div
-            onClick={() => setShowMicroOnHome(!showMicroOnHome)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${showMicroOnHome ? 'bg-emerald-500' : 'bg-gray-300'}`}
-          >
-            <div
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showMicroOnHome ? 'translate-x-5' : ''}`}
-            />
-          </div>
-        </label>
+      {/* Custom home nutrient visibility */}
+      <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
+        <h3 className="text-sm font-bold text-gray-700">首页显示营养素</h3>
+        <p className="text-xs text-gray-400">勾选的营养素将在首页以进度条形式显示</p>
+        <div className="space-y-1">
+          <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
+          {MACRO_KEYS.map((key) => (
+            <label key={key} className="flex items-center gap-2 py-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isNutrientOnHome(key)}
+                onChange={() => toggleHomeNutrient(key)}
+                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
+              {(targets[key] || 0) === 0 && (
+                <span className="text-xs text-gray-300">（未设目标）</span>
+              )}
+            </label>
+          ))}
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-xs font-medium text-gray-500 uppercase">微量元素</h4>
+          {MICRO_KEYS.map((key) => (
+            <label key={key} className="flex items-center gap-2 py-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isNutrientOnHome(key)}
+                onChange={() => toggleHomeNutrient(key)}
+                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
+              {(targets[key] || 0) === 0 && (
+                <span className="text-xs text-gray-300">（未设目标）</span>
+              )}
+            </label>
+          ))}
+        </div>
       </div>
 
-      {/* Smart recommendation - simplified to just a button */}
+      {/* Smart recommendation */}
       <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
         <h3 className="text-sm font-bold text-gray-700">推荐每日摄入</h3>
 
@@ -663,7 +761,6 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Existing fitness goals list */}
         {fitnessGoals.length > 0 && (
           <div className="space-y-2">
             {fitnessGoals.map((fg) => (

@@ -314,7 +314,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
               <h4 className="text-sm font-medium text-gray-700">营养素</h4>
               {quickMacroKeys.map((key) => (
                 <div key={key} className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 w-16 shrink-0">{NUTRIENT_LABELS[key]}</label>
+                  <label className="text-sm text-gray-600 w-20 shrink-0">{NUTRIENT_LABELS[key]}</label>
                   <input
                     type="number"
                     value={quickNutrients[key] || ''}
@@ -330,7 +330,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
 
               {/* Protein with checkbox */}
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 w-16 shrink-0">蛋白质</label>
+                <label className="text-sm text-gray-600 w-20 shrink-0">蛋白质</label>
                 <input
                   type="number"
                   value={quickProtein || ''}
@@ -371,7 +371,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
                 <div className="space-y-2">
                   {MICRO_KEYS.map((key) => (
                     <div key={key} className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600 w-16 shrink-0">{NUTRIENT_LABELS[key]}</label>
+                      <label className="text-sm text-gray-600 w-20 shrink-0">{NUTRIENT_LABELS[key]}</label>
                       <input
                         type="number"
                         value={quickNutrients[key] || ''}
