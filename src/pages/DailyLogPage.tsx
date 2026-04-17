@@ -86,22 +86,43 @@ export default function DailyLogPage() {
     return inSelected && (targets[key] || 0) > 0
   }
 
-  const renderNRow = (label: string, actual: number, target: number, unit: string, indented = false) => (
-    <div className={`flex items-center${indented ? ' pl-4' : ''}`}>
-      <span className="shrink-0 whitespace-nowrap text-xs text-gray-600">{label}</span>
-      <span
-        className="flex-1 mx-1.5"
-        style={{
-          height: '1px',
-          backgroundImage: 'repeating-linear-gradient(90deg, #d1d5db 0, #d1d5db 3px, transparent 0, transparent 7px)',
-          marginBottom: '2px',
-        }}
-      />
-      <span className="shrink-0 text-xs tabular-nums whitespace-nowrap">
-        <span className="text-gray-700">{Math.round(actual)}</span>
-        <span className="text-gray-400"> / {Math.round(target)} {unit}</span>
-      </span>
-    </div>
+  const getProgressColor = (actual: number, target: number) => {
+    if (!target) return 'bg-emerald-400'
+    const pct = (actual / target) * 100
+    if (pct < 80) return 'bg-emerald-400'
+    if (pct <= 100) return 'bg-emerald-500'
+    return 'bg-amber-500'
+  }
+
+  // Layout: [indent?] [label w-20 shrink-0] [dashes flex-1] [value w-[5.5rem] shrink-0] [bar w-16 shrink-0]
+  // All progress bars are w-16 (fixed), ensuring same width across all rows
+  const renderNRow = (label: string, actual: number, target: number, unit: string, indented = false) => {
+    const pct = target > 0 ? Math.min(100, (actual / target) * 100) : 0
+    return (
+      <div className={`flex items-center gap-1.5${indented ? ' pl-4' : ''}`}>
+        <span className="w-20 shrink-0 whitespace-nowrap text-xs text-gray-600">{label}</span>
+        <span
+          className="flex-1 min-w-0"
+          style={{
+            height: '1px',
+            backgroundImage: 'repeating-linear-gradient(90deg, #d1d5db 0, #d1d5db 3px, transparent 0, transparent 7px)',
+          }}
+        />
+        <span className="w-[5.5rem] shrink-0 text-xs tabular-nums text-right whitespace-nowrap text-gray-600">
+          {Math.round(actual)} / {Math.round(target)} <span className="text-gray-400 text-[10px]">{unit}</span>
+        </span>
+        <div className="w-16 shrink-0 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${getProgressColor(actual, target)}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const renderParentLabel = (label: string) => (
+    <div className="text-xs font-medium text-gray-500 pt-0.5">{label}</div>
   )
 
   const getEntryIconClass = (type: string) => {
@@ -119,7 +140,6 @@ export default function DailyLogPage() {
 
   const showProtein = isActive('completeProtein') || isActive('incompleteProtein')
   const showFat = isActive('fat') || isActive('saturatedFat') || isActive('monounsaturatedFat') || isActive('polyunsaturatedFat')
-  const activeMicroKeys = MICRO_KEYS.filter(isActive)
 
   return (
     <div className="pb-20">
@@ -188,12 +208,7 @@ export default function DailyLogPage() {
 
           {showProtein && (
             <>
-              {renderNRow(
-                '蛋白质',
-                totalNutrients.completeProtein + totalNutrients.incompleteProtein,
-                targets.completeProtein + targets.incompleteProtein,
-                'g',
-              )}
+              {renderParentLabel('蛋白')}
               {isActive('completeProtein') && renderNRow('完全蛋白', totalNutrients.completeProtein, targets.completeProtein, 'g', true)}
               {isActive('incompleteProtein') && renderNRow('不完全蛋白', totalNutrients.incompleteProtein, targets.incompleteProtein, 'g', true)}
             </>
@@ -201,7 +216,8 @@ export default function DailyLogPage() {
 
           {showFat && (
             <>
-              {isActive('fat') && renderNRow('脂肪', totalNutrients.fat, targets.fat, 'g')}
+              {renderParentLabel('脂肪')}
+              {isActive('fat') && renderNRow('脂肪总量', totalNutrients.fat, targets.fat, 'g', true)}
               {isActive('saturatedFat') && renderNRow('饱和脂肪', totalNutrients.saturatedFat, targets.saturatedFat, 'g', true)}
               {isActive('monounsaturatedFat') && renderNRow('单不饱和脂肪', totalNutrients.monounsaturatedFat, targets.monounsaturatedFat, 'g', true)}
               {isActive('polyunsaturatedFat') && renderNRow('多不饱和脂肪', totalNutrients.polyunsaturatedFat, targets.polyunsaturatedFat, 'g', true)}
@@ -211,7 +227,7 @@ export default function DailyLogPage() {
           {isActive('fiber') && renderNRow('膳食纤维', totalNutrients.fiber, targets.fiber, 'g')}
           {isActive('sodium') && renderNRow('钠', totalNutrients.sodium, targets.sodium, 'mg')}
 
-          {activeMicroKeys.map((key) => (
+          {MICRO_KEYS.filter(isActive).map((key) => (
             <div key={key}>
               {renderNRow(NUTRIENT_LABELS[key], totalNutrients[key], targets[key], NUTRIENT_UNITS[key])}
             </div>
