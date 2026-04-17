@@ -55,6 +55,9 @@ export default function SettingsPage() {
   const [fgCalorieAdj, setFgCalorieAdj] = useState(0)
   const [savingFitness, setSavingFitness] = useState(false)
 
+  // Home nutrient picker modal
+  const [showHomeNutrientPicker, setShowHomeNutrientPicker] = useState(false)
+
   // Export state
   const [exportStart, setExportStart] = useState('')
   const [exportEnd, setExportEnd] = useState('')
@@ -605,44 +608,75 @@ export default function SettingsPage() {
       </form>
 
       {/* Custom home nutrient visibility */}
-      <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
-        <h3 className="text-sm font-bold text-gray-700">首页显示营养素</h3>
-        <p className="text-xs text-gray-400">勾选的营养素将在首页以进度条形式显示</p>
-        <div className="space-y-1">
-          <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
-          {MACRO_KEYS.map((key) => (
-            <label key={key} className="flex items-center gap-2 py-1 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isNutrientOnHome(key)}
-                onChange={() => toggleHomeNutrient(key)}
-                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
-              />
-              <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
-              {(targets[key] || 0) === 0 && (
-                <span className="text-xs text-gray-300">（未设目标）</span>
-              )}
-            </label>
-          ))}
-        </div>
-        <div className="space-y-1">
-          <h4 className="text-xs font-medium text-gray-500 uppercase">微量元素</h4>
-          {MICRO_KEYS.map((key) => (
-            <label key={key} className="flex items-center gap-2 py-1 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isNutrientOnHome(key)}
-                onChange={() => toggleHomeNutrient(key)}
-                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
-              />
-              <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
-              {(targets[key] || 0) === 0 && (
-                <span className="text-xs text-gray-300">（未设目标）</span>
-              )}
-            </label>
-          ))}
-        </div>
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        <h3 className="text-sm font-bold text-gray-700 mb-3">首页显示营养素</h3>
+        <button
+          type="button"
+          onClick={() => setShowHomeNutrientPicker(true)}
+          className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200"
+        >
+          <span className="text-sm text-gray-600">选择显示的营养素</span>
+          <span className="text-sm text-emerald-600 font-medium">
+            {homeNutrientKeys.length > 0
+              ? `${homeNutrientKeys.length} 项`
+              : `${MACRO_KEYS.filter((k) => (targets[k] || 0) > 0).length} 项（默认）`} ›
+          </span>
+        </button>
       </div>
+
+      {/* Nutrient picker bottom sheet */}
+      {showHomeNutrientPicker && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end">
+          <div className="bg-white w-full max-h-[80vh] rounded-t-2xl flex flex-col">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h3 className="font-medium text-sm">首页显示营养素</h3>
+              <button
+                onClick={() => setShowHomeNutrientPicker(false)}
+                className="text-emerald-500 text-sm font-medium"
+              >
+                完成
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              <p className="text-xs text-gray-400 mb-3">勾选的营养素将在首页以进度条形式显示</p>
+              <div className="space-y-1 mb-4">
+                <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">宏量营养素</h4>
+                {MACRO_KEYS.map((key) => (
+                  <label key={key} className="flex items-center gap-2 py-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isNutrientOnHome(key)}
+                      onChange={() => toggleHomeNutrient(key)}
+                      className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
+                    {(targets[key] || 0) === 0 && (
+                      <span className="text-xs text-gray-300">（未设目标）</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">微量元素</h4>
+                {MICRO_KEYS.map((key) => (
+                  <label key={key} className="flex items-center gap-2 py-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isNutrientOnHome(key)}
+                      onChange={() => toggleHomeNutrient(key)}
+                      className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
+                    {(targets[key] || 0) === 0 && (
+                      <span className="text-xs text-gray-300">（未设目标）</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Smart recommendation */}
       <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">

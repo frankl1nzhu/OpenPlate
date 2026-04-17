@@ -7,7 +7,7 @@ import { useGoalStore } from '../store/goalStore'
 import { useFitnessGoalStore } from '../store/fitnessGoalStore'
 import { sumNutrients } from '../lib/utils'
 import { adjustTargetsForExercise } from '../lib/nutrition'
-import { NUTRIENT_LABELS, EMPTY_NUTRIENTS, MACRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
+import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 
@@ -31,17 +31,14 @@ export default function DailyLogPage() {
 
   const baseTargets = goal?.targets ?? EMPTY_NUTRIENTS
 
-  // Calculate exercise calories and active fitness goal
   const totalExerciseCalories = exercises.reduce((sum, ex) => sum + ex.caloriesBurned, 0)
   const activeGoal = getActiveGoal(selectedDate)
   const calorieAdj = activeGoal?.calorieAdjustment ?? 0
 
-  // Adjust targets: add exercise calories + fitness goal adjustment
   const targets = (baseTargets.calories > 0 && (totalExerciseCalories > 0 || calorieAdj !== 0))
     ? adjustTargetsForExercise(baseTargets, totalExerciseCalories, calorieAdj)
     : baseTargets
 
-  // Prefer denormalized data, fall back to ref lookup for old entries
   const getEntryRef = (entry: LogEntry): Food | Meal | undefined => {
     if (entry.type === 'quick') return undefined
     if (entry.type === 'food') return foods.find((f) => f.id === entry.refId)
@@ -81,34 +78,29 @@ export default function DailyLogPage() {
 
   const isToday = selectedDate === new Date().toISOString().split('T')[0]
 
-  const getProgress = (key: keyof Nutrients) => {
-    if (!targets[key]) return 0
-    return Math.min(100, (totalNutrients[key] / targets[key]) * 100)
+  // Whether a nutrient key should be shown based on homeNutrientKeys setting and having a target
+  const isActive = (key: keyof Nutrients) => {
+    const inSelected = homeNutrientKeys.length > 0
+      ? homeNutrientKeys.includes(key)
+      : MACRO_KEYS.includes(key)
+    return inSelected && (targets[key] || 0) > 0
   }
 
-  const getProgressColor = (key: keyof Nutrients) => {
-    const pct = getProgress(key)
-    if (pct < 80) return 'bg-emerald-400'
-    if (pct <= 100) return 'bg-emerald-500'
-    return 'bg-amber-500'
-  }
-
-  const activeNutrientKeys = homeNutrientKeys.length > 0
-    ? homeNutrientKeys.filter((k) => (targets[k] || 0) > 0)
-    : MACRO_KEYS.filter((k) => (targets[k] || 0) > 0)
-
-  const renderProgressRow = (key: keyof Nutrients) => (
-    <div key={key} className="flex items-center gap-2">
-      <span className="text-xs text-gray-500 shrink-0 w-20 text-right">{NUTRIENT_LABELS[key]}</span>
-      <span className="text-xs text-gray-400 shrink-0 tabular-nums whitespace-nowrap w-24 text-right">
-        {Math.round(totalNutrients[key])}/{Math.round(targets[key])}
+  const renderNRow = (label: string, actual: number, target: number, unit: string, indented = false) => (
+    <div className={`flex items-center${indented ? ' pl-4' : ''}`}>
+      <span className="shrink-0 whitespace-nowrap text-xs text-gray-600">{label}</span>
+      <span
+        className="flex-1 mx-1.5"
+        style={{
+          height: '1px',
+          backgroundImage: 'repeating-linear-gradient(90deg, #d1d5db 0, #d1d5db 3px, transparent 0, transparent 7px)',
+          marginBottom: '2px',
+        }}
+      />
+      <span className="shrink-0 text-xs tabular-nums whitespace-nowrap">
+        <span className="text-gray-700">{Math.round(actual)}</span>
+        <span className="text-gray-400"> / {Math.round(target)} {unit}</span>
       </span>
-      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden min-w-0">
-        <div
-          className={`h-full rounded-full transition-all ${getProgressColor(key)}`}
-          style={{ width: `${Math.min(100, getProgress(key))}%` }}
-        />
-      </div>
     </div>
   )
 
@@ -125,6 +117,10 @@ export default function DailyLogPage() {
     return entry.type === 'food' ? '食' : '餐'
   }
 
+  const showProtein = isActive('completeProtein') || isActive('incompleteProtein')
+  const showFat = isActive('fat') || isActive('saturatedFat') || isActive('monounsaturatedFat') || isActive('polyunsaturatedFat')
+  const activeMicroKeys = MICRO_KEYS.filter(isActive)
+
   return (
     <div className="pb-20">
       {/* Date selector */}
@@ -138,19 +134,8 @@ export default function DailyLogPage() {
           onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
           className="text-center relative"
         >
-          <div className="flex items-center gap-2">
-            <div className="text-sm font-medium">
-              {isToday ? '今天' : selectedDate}
-            </div>
-            {activeGoal && (
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                activeGoal.type === 'bulk' ? 'bg-blue-100 text-blue-600'
-                : activeGoal.type === 'cut' ? 'bg-orange-100 text-orange-600'
-                : 'bg-emerald-100 text-emerald-600'
-              }`}>
-                {FITNESS_GOAL_LABELS[activeGoal.type]}
-              </span>
-            )}
+          <div className="text-sm font-medium">
+            {isToday ? '今天' : selectedDate}
           </div>
           {isToday && <div className="text-xs text-gray-400">{selectedDate}</div>}
           <input
@@ -170,64 +155,68 @@ export default function DailyLogPage() {
 
       {/* Nutrient summary */}
       <div className="px-4 py-3 bg-white mb-2">
-        <div className="grid grid-cols-4 gap-2 mb-3">
-          <div className="text-center">
-            <div className="text-lg font-bold text-emerald-600">{Math.round(totalNutrients.calories)}</div>
-            <div className="text-xs text-gray-400">热量 kcal</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-blue-600">{Math.round(totalNutrients.carbs * 10) / 10}</div>
-            <div className="text-xs text-gray-400">碳水 g</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-orange-600">
-              {Math.round((totalNutrients.completeProtein + totalNutrients.incompleteProtein) * 10) / 10}
-            </div>
-            <div className="text-xs text-gray-400">蛋白 g</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-yellow-600">{Math.round(totalNutrients.fat * 10) / 10}</div>
-            <div className="text-xs text-gray-400">脂肪 g</div>
-          </div>
-        </div>
-
-        {/* Exercise calorie summary */}
-        {totalExerciseCalories > 0 && (
-          <div className="text-center text-xs text-purple-500 mb-2">
-            运动消耗 {totalExerciseCalories} kcal
-            {calorieAdj !== 0 && (
-              <span className="ml-2">
-                目标调整 {calorieAdj > 0 ? '+' : ''}{calorieAdj} kcal
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Fitness goal details */}
+        {/* Fitness goal */}
         {activeGoal && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-            <span className={`px-2 py-0.5 rounded-full font-medium ${
-              activeGoal.type === 'bulk' ? 'bg-blue-100 text-blue-600'
-              : activeGoal.type === 'cut' ? 'bg-orange-100 text-orange-600'
-              : 'bg-emerald-100 text-emerald-600'
+          <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-gray-100">
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              activeGoal.type === 'bulk' ? 'bg-blue-100 text-blue-700'
+              : activeGoal.type === 'cut' ? 'bg-orange-100 text-orange-700'
+              : 'bg-emerald-100 text-emerald-700'
             }`}>
               {FITNESS_GOAL_LABELS[activeGoal.type]}
             </span>
-            <span>{activeGoal.startDate} ~ {activeGoal.endDate}</span>
+            <span className="text-xs text-gray-400">{activeGoal.startDate} ~ {activeGoal.endDate}</span>
             {calorieAdj !== 0 && (
-              <span className="text-purple-500 font-medium">
+              <span className="text-xs text-purple-500 ml-auto font-medium">
                 {calorieAdj > 0 ? '+' : ''}{calorieAdj} kcal
               </span>
             )}
           </div>
         )}
 
-        {/* Nutrient progress bars */}
-        {activeNutrientKeys.length > 0 && (
-          <div className="space-y-1.5">
-            {activeNutrientKeys.map(renderProgressRow)}
+        {/* Exercise calories */}
+        {totalExerciseCalories > 0 && (
+          <div className="text-center text-xs text-purple-500 mb-2.5">
+            运动消耗 {totalExerciseCalories} kcal
           </div>
         )}
+
+        {/* Hierarchical nutrient rows */}
+        <div className="space-y-1.5">
+          {isActive('calories') && renderNRow('热量', totalNutrients.calories, targets.calories, 'kcal')}
+          {isActive('carbs') && renderNRow('碳水', totalNutrients.carbs, targets.carbs, 'g')}
+
+          {showProtein && (
+            <>
+              {renderNRow(
+                '蛋白质',
+                totalNutrients.completeProtein + totalNutrients.incompleteProtein,
+                targets.completeProtein + targets.incompleteProtein,
+                'g',
+              )}
+              {isActive('completeProtein') && renderNRow('完全蛋白', totalNutrients.completeProtein, targets.completeProtein, 'g', true)}
+              {isActive('incompleteProtein') && renderNRow('不完全蛋白', totalNutrients.incompleteProtein, targets.incompleteProtein, 'g', true)}
+            </>
+          )}
+
+          {showFat && (
+            <>
+              {isActive('fat') && renderNRow('脂肪', totalNutrients.fat, targets.fat, 'g')}
+              {isActive('saturatedFat') && renderNRow('饱和脂肪', totalNutrients.saturatedFat, targets.saturatedFat, 'g', true)}
+              {isActive('monounsaturatedFat') && renderNRow('单不饱和脂肪', totalNutrients.monounsaturatedFat, targets.monounsaturatedFat, 'g', true)}
+              {isActive('polyunsaturatedFat') && renderNRow('多不饱和脂肪', totalNutrients.polyunsaturatedFat, targets.polyunsaturatedFat, 'g', true)}
+            </>
+          )}
+
+          {isActive('fiber') && renderNRow('膳食纤维', totalNutrients.fiber, targets.fiber, 'g')}
+          {isActive('sodium') && renderNRow('钠', totalNutrients.sodium, targets.sodium, 'mg')}
+
+          {activeMicroKeys.map((key) => (
+            <div key={key}>
+              {renderNRow(NUTRIENT_LABELS[key], totalNutrients[key], targets[key], NUTRIENT_UNITS[key])}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Entry list */}
