@@ -22,26 +22,20 @@ export const useUserProfileStore = create<UserProfileState>()(
 
       setProfile: async (userId: string, data: Partial<UserProfile>) => {
         const ref = doc(db, 'userProfiles', userId)
-        const snap = await getDoc(ref)
-        const existing = snap.exists() ? snap.data() : {}
         await setDoc(ref, cleanForFirestore({
-          ...existing,
           ...data,
           id: userId,
           userId,
-        } as Record<string, unknown>))
+        } as Record<string, unknown>), { merge: true })
       },
 
       setNickname: async (userId: string, nickname: string) => {
         const ref = doc(db, 'userProfiles', userId)
-        const snap = await getDoc(ref)
-        const existing = snap.exists() ? snap.data() : {}
         await setDoc(ref, cleanForFirestore({
-          ...existing,
           id: userId,
           userId,
           nickname,
-        } as Record<string, unknown>))
+        } as Record<string, unknown>), { merge: true })
       },
     }),
     { name: 'openplate-userprofile', partialize: (state) => ({ profile: state.profile }) },

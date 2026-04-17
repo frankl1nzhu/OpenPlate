@@ -9,7 +9,6 @@ import {
   doc,
   query,
   where,
-  orderBy,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { cleanForFirestore } from '../lib/utils'
@@ -63,11 +62,14 @@ export const useMealStore = create<MealState>()(
 
 export function subscribeMeals(userId: string) {
   unsubscribe?.()
-  const q = query(collection(db, 'meals'), where('createdBy', '==', userId), orderBy('createdAt', 'desc'))
+  const q = query(collection(db, 'meals'), where('createdBy', '==', userId))
   unsubscribe = onSnapshot(q, (snapshot) => {
-    const meals = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Meal))
+    const meals = snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() } as Meal))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     useMealStore.setState({ meals, loading: false })
-  }, () => {
+  }, (err) => {
+    console.error('subscribeMeals error:', err)
     useMealStore.setState({ loading: false })
   })
 }

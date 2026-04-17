@@ -56,7 +56,8 @@ export function subscribeFitnessGoals(userId: string) {
   unsubscribe = onSnapshot(q, (snapshot) => {
     const goals = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FitnessGoal))
     useFitnessGoalStore.setState({ goals, loading: false })
-  }, () => {
+  }, (err) => {
+    console.error('subscribeFitnessGoals error:', err)
     useFitnessGoalStore.setState({ loading: false })
   })
 }
