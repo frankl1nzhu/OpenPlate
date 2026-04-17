@@ -5,8 +5,10 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   query,
+  where,
   orderBy,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
@@ -18,6 +20,7 @@ interface MealState {
   loading: boolean
   addMeal: (meal: Omit<Meal, 'id'>) => Promise<string>
   updateMeal: (id: string, data: Partial<Meal>) => Promise<void>
+  deleteMeal: (id: string) => Promise<void>
   requestDeleteMeal: (mealId: string, mealName: string, userId: string, reason: string) => Promise<void>
 }
 
@@ -38,6 +41,10 @@ export const useMealStore = create<MealState>()(
         await updateDoc(doc(db, 'meals', id), cleanForFirestore(data as Record<string, unknown>))
       },
 
+      deleteMeal: async (id) => {
+        await deleteDoc(doc(db, 'meals', id))
+      },
+
       requestDeleteMeal: async (mealId, mealName, userId, reason) => {
         await addDoc(collection(db, 'deleteRequests'), {
           type: 'meal',
@@ -54,9 +61,9 @@ export const useMealStore = create<MealState>()(
   ),
 )
 
-export function subscribeMeals() {
-  if (unsubscribe) return
-  const q = query(collection(db, 'meals'), orderBy('createdAt', 'desc'))
+export function subscribeMeals(userId: string) {
+  unsubscribe?.()
+  const q = query(collection(db, 'meals'), where('createdBy', '==', userId), orderBy('createdAt', 'desc'))
   unsubscribe = onSnapshot(q, (snapshot) => {
     const meals = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Meal))
     useMealStore.setState({ meals, loading: false })

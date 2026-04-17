@@ -1,4 +1,4 @@
-import type { Nutrients, ExerciseType, ExerciseIntensity, FitnessGoalType } from '../types'
+import type { Nutrients, ExerciseType, ExerciseIntensity } from '../types'
 import { EMPTY_NUTRIENTS } from '../types'
 
 // MET values: exercise type × intensity
@@ -66,8 +66,8 @@ export function calculateExerciseCalories(
  * Uses DRI (Dietary Reference Intakes) for micronutrients.
  *
  * Macros strategy:
- * - Protein: 1.6g/kg (maintain/cut), 2.0g/kg (bulk)
- * - Fat: 25% of total calories
+ * - Protein: 2.2g/kg (heavy labor or regular exercise), 1.6g/kg otherwise; 80% complete, 20% incomplete; weight-based only
+ * - Fat: 30% of total calories; saturated <30%, monounsaturated >=50%, polyunsaturated remainder
  * - Carbs: remaining calories
  */
 export function calculateRecommendedTargets(
@@ -75,16 +75,21 @@ export function calculateRecommendedTargets(
   weightKg: number,
   gender: 'male' | 'female',
   age: number,
-  goalType: FitnessGoalType = 'maintain',
+  activityLevel: string = 'sedentary',
+  regularExercise: boolean = false,
 ): Nutrients {
-  // Protein
-  const proteinPerKg = goalType === 'bulk' ? 2.0 : 1.6
+  // Protein: based on weight only, not calories
+  const isHighActivity = activityLevel === 'heavy' || regularExercise
+  const proteinPerKg = isHighActivity ? 2.2 : 1.6
   const totalProtein = Math.round(weightKg * proteinPerKg)
   const proteinCalories = totalProtein * 4
 
-  // Fat: 25% of TDEE
-  const fatCalories = tdee * 0.25
+  // Fat: 30% of TDEE
+  const fatCalories = tdee * 0.30
   const totalFat = Math.round(fatCalories / 9)
+  const saturatedFat = Math.round(totalFat * 0.30)   // upper limit 30%
+  const monounsaturatedFat = Math.round(totalFat * 0.50) // at least 50%
+  const polyunsaturatedFat = Math.round(totalFat * 0.20) // remainder
 
   // Carbs: remainder
   const carbCalories = tdee - proteinCalories - fatCalories
@@ -101,9 +106,12 @@ export function calculateRecommendedTargets(
     ...EMPTY_NUTRIENTS,
     calories: tdee,
     carbs: totalCarbs,
-    completeProtein: Math.round(totalProtein * 0.7), // 70% complete protein target
-    incompleteProtein: Math.round(totalProtein * 0.3),
+    completeProtein: Math.round(totalProtein * 0.8),  // 80% complete protein
+    incompleteProtein: Math.round(totalProtein * 0.2), // 20% incomplete protein
     fat: totalFat,
+    saturatedFat,
+    monounsaturatedFat,
+    polyunsaturatedFat,
     fiber,
     sodium: 2300,
     // Vitamins (DRI values)

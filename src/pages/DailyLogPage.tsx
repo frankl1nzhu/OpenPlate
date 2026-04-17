@@ -19,6 +19,7 @@ export default function DailyLogPage() {
   const { goal, showMicroOnHome } = useGoalStore()
   const { getActiveGoal } = useFitnessGoalStore()
   const [showAddModal, setShowAddModal] = useState(false)
+  const [addModalTab, setAddModalTab] = useState<'food' | 'exercise'>('food')
   const dateInputRef = useRef<HTMLInputElement>(null)
 
   const entries = currentLog?.entries ?? []
@@ -97,8 +98,8 @@ export default function DailyLogPage() {
 
   const renderProgressRow = (key: keyof Nutrients) => (
     <div key={key} className="flex items-center gap-2">
-      <span className="text-xs text-gray-500 shrink-0">{NUTRIENT_LABELS[key]}</span>
-      <span className="text-xs text-gray-400 shrink-0 tabular-nums whitespace-nowrap" style={{ minWidth: '5.5rem' }}>
+      <span className="text-xs text-gray-500 shrink-0 w-16 text-right">{NUTRIENT_LABELS[key]}</span>
+      <span className="text-xs text-gray-400 shrink-0 tabular-nums whitespace-nowrap w-24 text-right">
         {Math.round(totalNutrients[key])}/{Math.round(targets[key])}
       </span>
       <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden min-w-0">
@@ -221,7 +222,7 @@ export default function DailyLogPage() {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-700">饮食记录</h3>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => { setAddModalTab('food'); setShowAddModal(true) }}
             disabled={loading}
             className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
           >
@@ -279,7 +280,7 @@ export default function DailyLogPage() {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-700">运动记录</h3>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => { setAddModalTab('exercise'); setShowAddModal(true) }}
             disabled={loading}
             className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
           >
@@ -322,7 +323,7 @@ export default function DailyLogPage() {
       </div>
 
       {showAddModal && (
-        <AddEntryModal onClose={() => setShowAddModal(false)} />
+        <AddEntryModal defaultTab={addModalTab} onClose={() => setShowAddModal(false)} />
       )}
     </div>
   )

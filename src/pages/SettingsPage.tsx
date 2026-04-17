@@ -18,25 +18,30 @@ export default function SettingsPage() {
   const { goal, loading, setGoal, showMicroOnHome, setShowMicroOnHome } = useGoalStore()
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
-  const { profile, setProfile, setNickname } = useUserProfileStore()
+  const { profile, setProfile } = useUserProfileStore()
   const { goals: fitnessGoals, addGoal: addFitnessGoal, deleteGoal: deleteFitnessGoal } = useFitnessGoalStore()
 
   const [targets, setTargets] = useState<Nutrients>({ ...EMPTY_NUTRIENTS })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showMicro, setShowMicro] = useState(false)
+  const [editingGoals, setEditingGoals] = useState(false)
 
   // Nickname state
   const [nickname, setNicknameState] = useState('')
   const [savingNickname, setSavingNickname] = useState(false)
 
+  // Personal info state
+  const [infoAge, setInfoAge] = useState(0)
+  const [infoGender, setInfoGender] = useState<'male' | 'female'>('male')
+  const [infoWeight, setInfoWeight] = useState(0)
+  const [infoHeight, setInfoHeight] = useState(0)
+  const [infoActivity, setInfoActivity] = useState<'sedentary' | 'light' | 'moderate' | 'heavy'>('sedentary')
+  const [infoRegularExercise, setInfoRegularExercise] = useState(false)
+  const [savingInfo, setSavingInfo] = useState(false)
+  const [savedInfo, setSavedInfo] = useState(false)
+
   // Smart recommendation state
-  const [showRecommend, setShowRecommend] = useState(false)
-  const [recAge, setRecAge] = useState(profile?.age || 25)
-  const [recGender, setRecGender] = useState<'male' | 'female'>(profile?.gender || 'male')
-  const [recWeight, setRecWeight] = useState(profile?.weightKg || 70)
-  const [recHeight, setRecHeight] = useState(profile?.heightCm || 170)
-  const [recActivity, setRecActivity] = useState(profile?.activityLevel || 'sedentary')
   const [recommendedTargets, setRecommendedTargets] = useState<Nutrients | null>(null)
 
   // Fitness goal state
@@ -63,14 +68,15 @@ export default function SettingsPage() {
     if (profile?.nickname) setNicknameState(profile.nickname)
   }, [profile])
 
-  // Sync recommendation fields from profile
+  // Sync personal info from profile
   useEffect(() => {
     if (profile) {
-      if (profile.age) setRecAge(profile.age)
-      if (profile.gender) setRecGender(profile.gender)
-      if (profile.weightKg) setRecWeight(profile.weightKg)
-      if (profile.heightCm) setRecHeight(profile.heightCm)
-      if (profile.activityLevel) setRecActivity(profile.activityLevel)
+      if (profile.age) setInfoAge(profile.age)
+      if (profile.gender) setInfoGender(profile.gender)
+      if (profile.weightKg) setInfoWeight(profile.weightKg)
+      if (profile.heightCm) setInfoHeight(profile.heightCm)
+      if (profile.activityLevel) setInfoActivity(profile.activityLevel)
+      if (profile.regularExercise !== undefined) setInfoRegularExercise(profile.regularExercise)
     }
   }, [profile])
 
@@ -96,6 +102,7 @@ export default function SettingsPage() {
     try {
       await setGoal(user.uid, targets)
       setSaved(true)
+      setEditingGoals(false)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
       console.error(err)
@@ -174,11 +181,11 @@ export default function SettingsPage() {
     if (!user || !nickname.trim()) return
     setSavingNickname(true)
     try {
-      await setNickname(user.uid, nickname.trim())
-      // Also save email for admin lookups
-      if (user.email && (!profile || profile.email !== user.email)) {
-        await setProfile(user.uid, { email: user.email })
-      }
+      // Save nickname and email together in one call
+      await setProfile(user.uid, {
+        nickname: nickname.trim(),
+        email: user.email || undefined,
+      })
     } catch (err) {
       console.error(err)
       alert('保存失败')
@@ -187,28 +194,59 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSavePersonalInfo = async () => {
+    if (!user) return
+    setSavingInfo(true)
+    try {
+      await setProfile(user.uid, {
+        age: infoAge,
+        gender: infoGender,
+        weightKg: infoWeight,
+        heightCm: infoHeight,
+        activityLevel: infoActivity,
+        regularExercise: infoRegularExercise,
+        email: user.email || undefined,
+      })
+      setSavedInfo(true)
+      setTimeout(() => setSavedInfo(false), 2000)
+    } catch (err) {
+      console.error(err)
+      alert('保存失败')
+    } finally {
+      setSavingInfo(false)
+    }
+  }
+
   const handleCalculateRecommendation = () => {
-    const bmr = calculateBMR(recGender, recWeight, recHeight, recAge)
-    const tdee = calculateTDEE(bmr, recActivity)
-    const rec = calculateRecommendedTargets(tdee, recWeight, recGender, recAge)
+    if (!profile?.age || !profile?.weightKg || !profile?.heightCm || !profile?.gender) {
+      alert('请先填写并保存个人信息（年龄、性别、体重、身高）')
+      return
+    }
+    const bmr = calculateBMR(profile.gender, profile.weightKg, profile.heightCm, profile.age)
+    const tdee = calculateTDEE(bmr, profile.activityLevel || 'sedentary')
+    const rec = calculateRecommendedTargets(
+      tdee,
+      profile.weightKg,
+      profile.gender,
+      profile.age,
+      profile.activityLevel || 'sedentary',
+      profile.regularExercise || false,
+    )
     setRecommendedTargets(rec)
   }
 
   const handleApplyRecommendation = async () => {
     if (!recommendedTargets || !user) return
-    setTargets(recommendedTargets)
-    setSaved(false)
-    // Save body metrics to profile
-    await setProfile(user.uid, {
-      age: recAge,
-      gender: recGender,
-      weightKg: recWeight,
-      heightCm: recHeight,
-      activityLevel: recActivity,
-      email: user.email || undefined,
-    })
-    setRecommendedTargets(null)
-    setShowRecommend(false)
+    try {
+      await setGoal(user.uid, recommendedTargets)
+      setTargets(recommendedTargets)
+      setRecommendedTargets(null)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error(err)
+      alert('保存失败')
+    }
   }
 
   const handleAddFitnessGoal = async () => {
@@ -243,6 +281,8 @@ export default function SettingsPage() {
     )
   }
 
+  const hasGoalValues = MACRO_KEYS.some((k) => (targets[k] || 0) > 0)
+
   return (
     <div className="pb-20 px-4 py-4">
       <div className="text-center mb-6">
@@ -270,72 +310,225 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <h3 className="text-sm font-bold text-gray-700">每日目标摄入</h3>
-        <p className="text-xs text-gray-400">设置为 0 表示不追踪该指标</p>
-
-        <div className="space-y-3">
-          <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
-          {MACRO_KEYS.map((key) => (
-            <div key={key} className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-20 shrink-0">
-                {NUTRIENT_LABELS[key]}
-              </label>
-              <input
-                type="number"
-                value={targets[key] || ''}
-                onChange={(e) => handleChange(key, e.target.value)}
-                min={0}
-                max={99999}
-                step="any"
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="0"
-              />
-              <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+      {/* Personal Info */}
+      <div className="mb-6 pb-4 border-b border-gray-200 space-y-3">
+        <h3 className="text-sm font-bold text-gray-700">个人信息</h3>
+        <div className="space-y-3 bg-gray-50 rounded-xl p-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 w-20 shrink-0">年龄</label>
+            <input
+              type="number"
+              value={infoAge || ''}
+              onChange={(e) => setInfoAge(parseInt(e.target.value) || 0)}
+              min={1}
+              max={120}
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="0"
+            />
+            <span className="text-xs text-gray-400">岁</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 w-20 shrink-0">性别</label>
+            <div className="flex gap-2 flex-1">
+              <button
+                type="button"
+                onClick={() => setInfoGender('male')}
+                className={`flex-1 py-1.5 text-sm rounded-lg border ${infoGender === 'male' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
+              >
+                男
+              </button>
+              <button
+                type="button"
+                onClick={() => setInfoGender('female')}
+                className={`flex-1 py-1.5 text-sm rounded-lg border ${infoGender === 'female' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
+              >
+                女
+              </button>
             </div>
-          ))}
-
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 w-20 shrink-0">体重</label>
+            <input
+              type="number"
+              value={infoWeight || ''}
+              onChange={(e) => setInfoWeight(parseFloat(e.target.value) || 0)}
+              min={1}
+              step="0.1"
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="0"
+            />
+            <span className="text-xs text-gray-400">kg</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 w-20 shrink-0">身高</label>
+            <input
+              type="number"
+              value={infoHeight || ''}
+              onChange={(e) => setInfoHeight(parseFloat(e.target.value) || 0)}
+              min={1}
+              step="0.1"
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="0"
+            />
+            <span className="text-xs text-gray-400">cm</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 w-20 shrink-0">工作类型</label>
+            <select
+              value={infoActivity}
+              onChange={(e) => setInfoActivity(e.target.value as 'sedentary' | 'light' | 'moderate' | 'heavy')}
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              {Object.entries(ACTIVITY_LEVEL_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={infoRegularExercise}
+              onChange={(e) => setInfoRegularExercise(e.target.checked)}
+              className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+            />
+            <span className="text-sm text-gray-600">规律锻炼</span>
+          </label>
           <button
             type="button"
-            onClick={() => setShowMicro(!showMicro)}
-            className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase mt-2"
+            onClick={handleSavePersonalInfo}
+            disabled={savingInfo}
+            className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg disabled:opacity-50"
           >
-            微量元素
-            <svg
-              className={`w-4 h-4 transition-transform ${showMicro ? 'rotate-180' : ''}`}
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            {savingInfo ? '保存中...' : savedInfo ? '已保存' : '保存个人信息'}
           </button>
+        </div>
+      </div>
 
-          {showMicro && MICRO_KEYS.map((key) => (
-            <div key={key} className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-20 shrink-0">
-                {NUTRIENT_LABELS[key]}
-              </label>
-              <input
-                type="number"
-                value={targets[key] || ''}
-                onChange={(e) => handleChange(key, e.target.value)}
-                min={0}
-                max={99999}
-                step="any"
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="0"
-              />
-              <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
-            </div>
-          ))}
+      {/* Daily Goals - display/edit mode */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-700">每日目标摄入</h3>
+          {!editingGoals && hasGoalValues && (
+            <button
+              type="button"
+              onClick={() => setEditingGoals(true)}
+              className="text-sm text-emerald-500 font-medium"
+            >
+              编辑
+            </button>
+          )}
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors"
-        >
-          {saving ? '保存中...' : saved ? '已保存' : '保存目标'}
-        </button>
+        {!editingGoals && hasGoalValues ? (
+          /* Display mode */
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
+              {MACRO_KEYS.filter((k) => (targets[k] || 0) > 0).map((key) => (
+                <div key={key} className="flex items-center justify-between py-1">
+                  <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
+                  <span className="text-sm font-medium text-gray-800">
+                    {Math.round(targets[key] * 10) / 10} {NUTRIENT_UNITS[key]}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {MICRO_KEYS.some((k) => (targets[k] || 0) > 0) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowMicro(!showMicro)}
+                  className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase mt-2"
+                >
+                  微量元素
+                  <svg
+                    className={`w-4 h-4 transition-transform ${showMicro ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showMicro && MICRO_KEYS.filter((k) => (targets[k] || 0) > 0).map((key) => (
+                  <div key={key} className="flex items-center justify-between py-1">
+                    <span className="text-sm text-gray-600">{NUTRIENT_LABELS[key]}</span>
+                    <span className="text-sm font-medium text-gray-800">
+                      {Math.round(targets[key] * 10) / 10} {NUTRIENT_UNITS[key]}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        ) : (
+          /* Edit mode */
+          <>
+            <p className="text-xs text-gray-400">设置为 0 表示不追踪该指标</p>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-medium text-gray-500 uppercase">宏量营养素</h4>
+              {MACRO_KEYS.map((key) => (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 w-24 shrink-0">
+                    {NUTRIENT_LABELS[key]}
+                  </label>
+                  <input
+                    type="number"
+                    value={targets[key] || ''}
+                    onChange={(e) => handleChange(key, e.target.value)}
+                    min={0}
+                    max={99999}
+                    step="any"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setShowMicro(!showMicro)}
+                className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase mt-2"
+              >
+                微量元素
+                <svg
+                  className={`w-4 h-4 transition-transform ${showMicro ? 'rotate-180' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showMicro && MICRO_KEYS.map((key) => (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 w-24 shrink-0">
+                    {NUTRIENT_LABELS[key]}
+                  </label>
+                  <input
+                    type="number"
+                    value={targets[key] || ''}
+                    onChange={(e) => handleChange(key, e.target.value)}
+                    min={0}
+                    max={99999}
+                    step="any"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+            >
+              {saving ? '保存中...' : saved ? '已保存' : '保存目标'}
+            </button>
+          </>
+        )}
       </form>
 
       {/* Show micro on home toggle */}
@@ -353,119 +546,40 @@ export default function SettingsPage() {
         </label>
       </div>
 
-      {/* Smart recommendation */}
+      {/* Smart recommendation - simplified to just a button */}
       <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-700">智能推荐每日摄入</h3>
-          <button
-            type="button"
-            onClick={() => setShowRecommend(!showRecommend)}
-            className="text-sm text-emerald-500 font-medium"
-          >
-            {showRecommend ? '收起' : '开始'}
-          </button>
-        </div>
+        <h3 className="text-sm font-bold text-gray-700">推荐每日摄入</h3>
 
-        {showRecommend && (
-          <div className="space-y-3 bg-gray-50 rounded-xl p-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-16 shrink-0">年龄</label>
-              <input
-                type="number"
-                value={recAge}
-                onChange={(e) => setRecAge(parseInt(e.target.value) || 0)}
-                min={1}
-                max={120}
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-gray-400">岁</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-16 shrink-0">性别</label>
-              <div className="flex gap-2 flex-1">
-                <button
-                  type="button"
-                  onClick={() => setRecGender('male')}
-                  className={`flex-1 py-1.5 text-sm rounded-lg border ${recGender === 'male' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
-                >
-                  男
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecGender('female')}
-                  className={`flex-1 py-1.5 text-sm rounded-lg border ${recGender === 'female' ? 'bg-emerald-500 text-white border-emerald-500' : 'border-gray-300 text-gray-600'}`}
-                >
-                  女
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-16 shrink-0">体重</label>
-              <input
-                type="number"
-                value={recWeight}
-                onChange={(e) => setRecWeight(parseFloat(e.target.value) || 0)}
-                min={1}
-                step="0.1"
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-gray-400">kg</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-16 shrink-0">身高</label>
-              <input
-                type="number"
-                value={recHeight}
-                onChange={(e) => setRecHeight(parseFloat(e.target.value) || 0)}
-                min={1}
-                step="0.1"
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-gray-400">cm</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-16 shrink-0">工作</label>
-              <select
-                value={recActivity}
-                onChange={(e) => setRecActivity(e.target.value as 'sedentary' | 'light' | 'moderate' | 'heavy')}
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                {Object.entries(ACTIVITY_LEVEL_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
+        <button
+          type="button"
+          onClick={handleCalculateRecommendation}
+          className="w-full py-2 bg-blue-500 text-white text-sm font-medium rounded-lg"
+        >
+          计算推荐值
+        </button>
 
+        {recommendedTargets && (
+          <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-100">
+            <h4 className="text-xs font-medium text-gray-500">推荐每日摄入（Mifflin-St Jeor + DRI）</h4>
+            <div className="grid grid-cols-2 gap-1">
+              {MACRO_KEYS.map((key) => (
+                recommendedTargets[key] > 0 && (
+                  <div key={key} className="flex justify-between text-xs">
+                    <span className="text-gray-600">{NUTRIENT_LABELS[key]}</span>
+                    <span className="font-medium">
+                      {Math.round(recommendedTargets[key])} {NUTRIENT_UNITS[key]}
+                    </span>
+                  </div>
+                )
+              ))}
+            </div>
             <button
               type="button"
-              onClick={handleCalculateRecommendation}
-              className="w-full py-2 bg-blue-500 text-white text-sm font-medium rounded-lg"
+              onClick={handleApplyRecommendation}
+              className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg mt-2"
             >
-              计算推荐值
+              应用到每日目标
             </button>
-
-            {recommendedTargets && (
-              <div className="bg-white rounded-lg p-3 space-y-2">
-                <h4 className="text-xs font-medium text-gray-500">推荐每日摄入（Mifflin-St Jeor + DRI）</h4>
-                <div className="grid grid-cols-2 gap-1">
-                  {MACRO_KEYS.map((key) => (
-                    <div key={key} className="flex justify-between text-xs">
-                      <span className="text-gray-600">{NUTRIENT_LABELS[key]}</span>
-                      <span className="font-medium">
-                        {Math.round(recommendedTargets[key])} {NUTRIENT_UNITS[key]}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={handleApplyRecommendation}
-                  className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg mt-2"
-                >
-                  应用到每日目标
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>

@@ -10,13 +10,14 @@ service cloud.firestore {
         && request.auth.token.admin == true;
     }
 
-    // Meals - shared across all users, any authenticated user can read/create/update
+    // Meals - per-user, owner can manage their own meals
     match /meals/{mealId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null;
-      // Only admins can delete (requires approval like foods)
+      // Owner or admin can delete
       allow delete: if request.auth != null
-        && request.auth.token.admin == true;
+        && (resource.data.createdBy == request.auth.uid
+            || request.auth.token.admin == true);
     }
 
     // Delete requests - any authenticated user can create, only admin can update/delete
@@ -52,7 +53,7 @@ service cloud.firestore {
 
     // Fitness goals - only the owner can read/write
     match /fitnessGoals/{goalId} {
-      allow read, write: if request.auth != null
+      allow read, update, delete: if request.auth != null
         && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid;

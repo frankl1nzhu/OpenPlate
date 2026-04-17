@@ -125,7 +125,7 @@ export default function AdminPage() {
                   </span>
                 </div>
                 <div className="text-xs text-gray-400 mb-1">
-                  申请人: {profile?.nickname || '未设置昵称'} ({profile?.email || req.requestedBy})
+                  申请人: {profile?.nickname || '未设置昵称'} ({profile?.email || '邮箱未知'})
                 </div>
                 {req.reason && (
                   <div className="text-xs text-gray-500 mb-3 bg-gray-50 rounded-lg p-2">

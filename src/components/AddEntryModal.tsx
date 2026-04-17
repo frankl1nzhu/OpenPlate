@@ -12,9 +12,10 @@ import type { Nutrients, ExerciseType, ExerciseIntensity } from '../types'
 
 interface Props {
   onClose: () => void
+  defaultTab?: 'food' | 'exercise'
 }
 
-export default function AddEntryModal({ onClose }: Props) {
+export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
   useScrollLock(true)
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
@@ -22,7 +23,8 @@ export default function AddEntryModal({ onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const { profile } = useUserProfileStore()
 
-  const [tab, setTab] = useState<'food' | 'meal' | 'quick' | 'exercise'>('food')
+  const isExerciseMode = defaultTab === 'exercise'
+  const [tab, setTab] = useState<'food' | 'meal' | 'quick' | 'exercise'>(isExerciseMode ? 'exercise' : 'food')
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedUnit, setSelectedUnit] = useState<string>('')
@@ -170,37 +172,39 @@ export default function AddEntryModal({ onClose }: Props) {
       <div className="bg-white w-full max-w-lg rounded-2xl max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-          <h3 className="font-medium">添加记录</h3>
+          <h3 className="font-medium">{isExerciseMode ? '添加运动' : '添加记录'}</h3>
           <button onClick={onClose} className="text-gray-400 text-sm">关闭</button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100 shrink-0">
-          <button
-            onClick={() => switchTab('food')}
-            className={`flex-1 py-2 text-sm font-medium ${tab === 'food' ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400'}`}
-          >
-            食物
-          </button>
-          <button
-            onClick={() => switchTab('meal')}
-            className={`flex-1 py-2 text-sm font-medium ${tab === 'meal' ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400'}`}
-          >
-            套餐
-          </button>
-          <button
-            onClick={() => switchTab('quick')}
-            className={`flex-1 py-2 text-sm font-medium ${tab === 'quick' ? 'text-blue-600 border-b-2 border-blue-500' : 'text-gray-400'}`}
-          >
-            快速添加
-          </button>
-          <button
-            onClick={() => switchTab('exercise')}
-            className={`flex-1 py-2 text-sm font-medium ${tab === 'exercise' ? 'text-purple-600 border-b-2 border-purple-500' : 'text-gray-400'}`}
-          >
-            运动
-          </button>
-        </div>
+        {isExerciseMode ? (
+          <div className="flex border-b border-gray-100 shrink-0">
+            <div className="flex-1 py-2 text-sm font-medium text-center text-purple-600 border-b-2 border-purple-500">
+              运动
+            </div>
+          </div>
+        ) : (
+          <div className="flex border-b border-gray-100 shrink-0">
+            <button
+              onClick={() => switchTab('food')}
+              className={`flex-1 py-2 text-sm font-medium ${tab === 'food' ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400'}`}
+            >
+              食物
+            </button>
+            <button
+              onClick={() => switchTab('meal')}
+              className={`flex-1 py-2 text-sm font-medium ${tab === 'meal' ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400'}`}
+            >
+              套餐
+            </button>
+            <button
+              onClick={() => switchTab('quick')}
+              className={`flex-1 py-2 text-sm font-medium ${tab === 'quick' ? 'text-blue-600 border-b-2 border-blue-500' : 'text-gray-400'}`}
+            >
+              快速添加
+            </button>
+          </div>
+        )}
 
         {/* Exercise form */}
         {tab === 'exercise' ? (

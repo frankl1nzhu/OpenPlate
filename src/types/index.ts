@@ -4,6 +4,9 @@ export interface Nutrients {
   completeProtein: number // 完全蛋白 (g)
   incompleteProtein: number // 不完全蛋白 (g)
   fat: number             // 脂肪 (g)
+  saturatedFat: number    // 饱和脂肪 (g)
+  monounsaturatedFat: number // 单不饱和脂肪 (g)
+  polyunsaturatedFat: number // 多不饱和脂肪 (g)
   fiber: number           // 膳食纤维 (g)
   sodium: number          // 钠 (mg)
   // 微量元素
@@ -40,6 +43,9 @@ export const EMPTY_NUTRIENTS: Nutrients = {
   completeProtein: 0,
   incompleteProtein: 0,
   fat: 0,
+  saturatedFat: 0,
+  monounsaturatedFat: 0,
+  polyunsaturatedFat: 0,
   fiber: 0,
   sodium: 0,
   vitaminA: 0,
@@ -71,7 +77,7 @@ export const EMPTY_NUTRIENTS: Nutrients = {
 
 // 宏量营养素 keys
 export const MACRO_KEYS: (keyof Nutrients)[] = [
-  'calories', 'carbs', 'completeProtein', 'incompleteProtein', 'fat', 'fiber', 'sodium',
+  'calories', 'carbs', 'completeProtein', 'incompleteProtein', 'fat', 'saturatedFat', 'monounsaturatedFat', 'polyunsaturatedFat', 'fiber', 'sodium',
 ]
 
 // 微量元素 keys
@@ -91,6 +97,9 @@ export const NUTRIENT_LABELS: Record<keyof Nutrients, string> = {
   completeProtein: '完全蛋白',
   incompleteProtein: '不完全蛋白',
   fat: '脂肪',
+  saturatedFat: '饱和脂肪',
+  monounsaturatedFat: '单不饱和脂肪',
+  polyunsaturatedFat: '多不饱和脂肪',
   fiber: '膳食纤维',
   sodium: '钠',
   vitaminA: '维生素A',
@@ -126,6 +135,9 @@ export const NUTRIENT_UNITS: Record<keyof Nutrients, string> = {
   completeProtein: 'g',
   incompleteProtein: 'g',
   fat: 'g',
+  saturatedFat: 'g',
+  monounsaturatedFat: 'g',
+  polyunsaturatedFat: 'g',
   fiber: 'g',
   sodium: 'mg',
   vitaminA: 'μg',
@@ -239,6 +251,7 @@ export interface UserProfile {
   weightKg?: number
   heightCm?: number
   activityLevel?: 'sedentary' | 'light' | 'moderate' | 'heavy'
+  regularExercise?: boolean  // 是否规律锻炼
 }
 
 // 运动记录

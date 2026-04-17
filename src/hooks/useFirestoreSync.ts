@@ -23,7 +23,7 @@ export function useFirestoreSync() {
     }
 
     subscribeFoods()
-    subscribeMeals()
+    subscribeMeals(user.uid)
     subscribeGoal(user.uid)
     subscribeUserProfile(user.uid)
     subscribeFitnessGoals(user.uid)
