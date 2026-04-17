@@ -94,24 +94,20 @@ export default function DailyLogPage() {
     return 'bg-amber-500'
   }
 
-  // Layout: [indent?] [label w-20 shrink-0] [dashes flex-1] [value w-[5.5rem] shrink-0] [bar w-16 shrink-0]
-  // All progress bars are w-16 (fixed), ensuring same width across all rows
+  // Two-line row: label + value on top, full-width progress bar below.
+  // All bars span the same full width. Child rows indent only the text line, not the bar.
   const renderNRow = (label: string, actual: number, target: number, unit: string, indented = false) => {
     const pct = target > 0 ? Math.min(100, (actual / target) * 100) : 0
     return (
-      <div className={`flex items-center gap-1.5${indented ? ' pl-4' : ''}`}>
-        <span className="w-20 shrink-0 whitespace-nowrap text-xs text-gray-600">{label}</span>
-        <span
-          className="flex-1 min-w-0"
-          style={{
-            height: '1px',
-            backgroundImage: 'repeating-linear-gradient(90deg, #d1d5db 0, #d1d5db 3px, transparent 0, transparent 7px)',
-          }}
-        />
-        <span className="w-[5.5rem] shrink-0 text-xs tabular-nums text-right whitespace-nowrap text-gray-600">
-          {Math.round(actual)} / {Math.round(target)} <span className="text-gray-400 text-[10px]">{unit}</span>
-        </span>
-        <div className="w-16 shrink-0 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div>
+        <div className={`flex items-baseline justify-between mb-1 ${indented ? 'pl-4' : ''}`}>
+          <span className="text-xs text-gray-600 whitespace-nowrap">{label}</span>
+          <span className="text-xs tabular-nums ml-2 whitespace-nowrap shrink-0">
+            <span className="text-gray-700">{Math.round(actual)}</span>
+            <span className="text-gray-400"> / {Math.round(target)} {unit}</span>
+          </span>
+        </div>
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${getProgressColor(actual, target)}`}
             style={{ width: `${pct}%` }}
@@ -122,7 +118,7 @@ export default function DailyLogPage() {
   }
 
   const renderParentLabel = (label: string) => (
-    <div className="text-xs font-medium text-gray-500 pt-0.5">{label}</div>
+    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide pt-1">{label}</div>
   )
 
   const getEntryIconClass = (type: string) => {
@@ -202,7 +198,7 @@ export default function DailyLogPage() {
         )}
 
         {/* Hierarchical nutrient rows */}
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           {isActive('calories') && renderNRow('热量', totalNutrients.calories, targets.calories, 'kcal')}
           {isActive('carbs') && renderNRow('碳水', totalNutrients.carbs, targets.carbs, 'g')}
 
