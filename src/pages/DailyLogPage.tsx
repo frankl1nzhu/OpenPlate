@@ -99,8 +99,8 @@ export default function DailyLogPage() {
   const renderNRow = (label: string, actual: number, target: number, unit: string, indented = false) => {
     const pct = target > 0 ? Math.min(100, (actual / target) * 100) : 0
     return (
-      <div>
-        <div className={`flex items-baseline justify-between mb-1 ${indented ? 'pl-4' : ''}`}>
+      <div className={indented ? 'pl-4' : ''}>
+        <div className="flex items-baseline justify-between mb-1">
           <span className="text-xs text-gray-600 whitespace-nowrap">{label}</span>
           <span className="text-xs tabular-nums ml-2 whitespace-nowrap shrink-0">
             <span className="text-gray-700">{Math.round(actual)}</span>
