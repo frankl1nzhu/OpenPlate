@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useFoodStore } from '../store/foodStore'
 import { Link } from 'react-router-dom'
 import AIFoodModal from '../components/AIFoodModal'
+import AITaskBanner from '../components/AITaskBanner'
 
 export default function FoodListPage() {
   const { foods, loading } = useFoodStore()
@@ -40,6 +41,9 @@ export default function FoodListPage() {
           className="w-full px-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
       </div>
+
+      {/* AI task status banner — pinned below header */}
+      <AITaskBanner type="food" />
 
       {loading ? (
         <div className="flex justify-center py-12">

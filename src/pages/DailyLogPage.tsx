@@ -11,6 +11,7 @@ import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEY
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 import AIQuickRecordModal from '../components/AIQuickRecordModal'
+import AITaskBanner from '../components/AITaskBanner'
 
 export default function DailyLogPage() {
   const user = useAuthStore((s) => s.user)
@@ -181,6 +182,9 @@ export default function DailyLogPage() {
           </svg>
         </button>
       </div>
+
+      {/* AI task status banner */}
+      <AITaskBanner type="quick" />
 
       {/* Nutrient summary */}
       <div className="px-4 py-3 bg-white mb-2">
