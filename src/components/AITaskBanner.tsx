@@ -13,9 +13,9 @@ import type { Nutrients } from '../types'
 function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
   useScrollLock(true)
   const user = useAuthStore((s) => s.user)
-  const { addFood } = useFoodStore()
-  const { addEntry } = useDailyLogStore()
-  const { dismissTask } = useAiTaskStore()
+  const addFood = useFoodStore((s) => s.addFood)
+  const addEntry = useDailyLogStore((s) => s.addEntry)
+  const dismissTask = useAiTaskStore((s) => s.dismissTask)
 
   const initial = task.result!
   const [editName, setEditName] = useState(initial.name)
@@ -231,7 +231,7 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
 // ─── Task banner card ─────────────────────────────────────────────────────────
 
 function TaskCard({ task }: { task: AiTask }) {
-  const { dismissTask } = useAiTaskStore()
+  const dismissTask = useAiTaskStore((s) => s.dismissTask)
   const [showVerify, setShowVerify] = useState(false)
 
   return (

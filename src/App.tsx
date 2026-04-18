@@ -15,6 +15,7 @@ import BottomNav from './components/BottomNav'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineIndicator from './components/OfflineIndicator'
 import ToastContainer from './components/ToastContainer'
+import ErrorBoundary from './components/ErrorBoundary'
 import type { ReactNode } from 'react'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
 
@@ -49,15 +50,17 @@ function AppShell() {
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <h1 className="text-lg font-bold text-emerald-600 text-center">OpenPlate</h1>
       </header>
-      <Routes>
-        <Route path="/" element={<DailyLogPage />} />
-        <Route path="/foods" element={<FoodListPage />} />
-        <Route path="/foods/:id" element={<FoodFormPage />} />
-        <Route path="/meals" element={<MealListPage />} />
-        <Route path="/meals/:id" element={<MealFormPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<DailyLogPage />} />
+          <Route path="/foods" element={<FoodListPage />} />
+          <Route path="/foods/:id" element={<FoodFormPage />} />
+          <Route path="/meals" element={<MealListPage />} />
+          <Route path="/meals/:id" element={<MealFormPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+        </Routes>
+      </ErrorBoundary>
       <BottomNav />
     </div>
   )
