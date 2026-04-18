@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useFoodStore } from '../store/foodStore'
 import { Link } from 'react-router-dom'
+import AIFoodModal from '../components/AIFoodModal'
 
 export default function FoodListPage() {
   const { foods, loading } = useFoodStore()
   const [search, setSearch] = useState('')
+  const [showAIModal, setShowAIModal] = useState(false)
 
   const filtered = foods.filter((f) =>
     f.name.toLowerCase().includes(search.toLowerCase()),
@@ -15,12 +17,20 @@ export default function FoodListPage() {
       <div className="sticky top-0 bg-white z-10 px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold">食物库</h2>
-          <Link
-            to="/foods/new"
-            className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
-          >
-            + 添加食物
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+            >
+              AI识别
+            </button>
+            <Link
+              to="/foods/new"
+              className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+            >
+              + 添加食物
+            </Link>
+          </div>
         </div>
         <input
           type="text"
@@ -74,6 +84,8 @@ export default function FoodListPage() {
           ))}
         </div>
       )}
+
+      {showAIModal && <AIFoodModal onClose={() => setShowAIModal(false)} />}
     </div>
   )
 }
