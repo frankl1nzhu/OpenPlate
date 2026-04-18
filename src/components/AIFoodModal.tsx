@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore'
 import { useFoodStore } from '../store/foodStore'
 import { useLLMUsageStore } from '../store/llmUsageStore'
 import { useToastStore } from '../store/toastStore'
-import { analyzeFoodPhoto, type LLMFoodResult } from '../lib/llm'
+import { analyzeFoodPhoto } from '../lib/llm'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
@@ -28,7 +28,6 @@ export default function AIFoodModal({ onClose }: Props) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [description, setDescription] = useState('')
-  const [result, setResult] = useState<LLMFoodResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [remaining, setRemaining] = useState<number | null>(null)
@@ -64,7 +63,6 @@ export default function AIFoodModal({ onClose }: Props) {
 
     try {
       const r = await analyzeFoodPhoto(photoFile, description || undefined)
-      setResult(r)
       setEditName(r.name)
       setEditIsComplete(r.isCompleteProtein)
       setEditNutrients({ ...r.nutrients })
@@ -321,7 +319,7 @@ export default function AIFoodModal({ onClose }: Props) {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setStage('upload'); setResult(null); setError('') }}
+                  onClick={() => { setStage('upload'); setError('') }}
                   className="flex-1 py-2.5 border border-gray-300 text-gray-600 font-medium rounded-lg"
                 >
                   重新识别
