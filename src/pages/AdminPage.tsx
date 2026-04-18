@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { collection, query, where, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, updateDoc, doc, deleteDoc, getDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import { fetchUserProfiles } from '../store/userProfileStore'
+import { deletePhoto } from '../lib/storage'
 import type { DeleteRequest, UserProfile } from '../types'
 
 export default function AdminPage() {
@@ -52,6 +53,11 @@ export default function AdminPage() {
     try {
       // Delete the food or meal based on type
       const collectionName = req.type === 'meal' ? 'meals' : 'foods'
+      // Delete storage photo if any
+      const snap = await getDoc(doc(db, collectionName, req.targetId))
+      if (snap.exists() && snap.data().photoURL) {
+        await deletePhoto(snap.data().photoURL as string)
+      }
       await deleteDoc(doc(db, collectionName, req.targetId))
       // Update request status
       await updateDoc(doc(db, 'deleteRequests', req.id), {

@@ -7,11 +7,13 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  getDoc,
   query,
   where,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { cleanForFirestore } from '../lib/utils'
+import { deletePhoto } from '../lib/storage'
 import type { Meal } from '../types'
 
 interface MealState {
@@ -41,6 +43,11 @@ export const useMealStore = create<MealState>()(
       },
 
       deleteMeal: async (id) => {
+        // Delete photo from storage first, then Firestore doc
+        const snap = await getDoc(doc(db, 'meals', id))
+        if (snap.exists() && snap.data().photoURL) {
+          await deletePhoto(snap.data().photoURL as string)
+        }
         await deleteDoc(doc(db, 'meals', id))
       },
 
