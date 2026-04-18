@@ -49,19 +49,18 @@ export default function AIFoodModal({ onClose }: Props) {
 
   const handleAnalyze = async () => {
     if (!user || !photoFile) return
-
-    // Check usage limit
-    const rem = await getRemainingUses(user.uid, 'food')
-    setRemaining(rem)
-    if (rem <= 0) {
-      setError('今日AI识别次数已用完（每天5次）')
-      return
-    }
-
     setStage('processing')
     setError('')
-
     try {
+      // Check usage limit
+      const rem = await getRemainingUses(user.uid, 'food')
+      setRemaining(rem)
+      if (rem <= 0) {
+        setError('今日AI识别次数已用完（每天5次）')
+        setStage('upload')
+        return
+      }
+
       const r = await analyzeFoodPhoto(photoFile, description || undefined)
       setEditName(r.name)
       setEditIsComplete(r.isCompleteProtein)
@@ -169,7 +168,7 @@ export default function AIFoodModal({ onClose }: Props) {
                       拍照/上传
                     </div>
                   )}
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="hidden" />
+                  <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
                 </label>
               </div>
 

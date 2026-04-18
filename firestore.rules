@@ -59,12 +59,10 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid;
     }
 
-    // LLM usage tracking - owner can read/write their own usage
-    match /llmUsage/{usageId} {
-      allow read, write: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
-      allow read: if request.auth != null
-        && resource.data.userId == request.auth.uid;
+    // LLM usage tracking - nested by userId so rules are clean
+    // Path: llmUsage/{userId}/daily/{feature}_{date}
+    match /llmUsage/{userId}/daily/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

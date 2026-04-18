@@ -46,18 +46,17 @@ export default function AIQuickRecordModal({ onClose }: Props) {
 
   const handleAnalyze = async () => {
     if (!user || !photoFile) return
-
-    const rem = await getRemainingUses(user.uid, 'quick')
-    setRemaining(rem)
-    if (rem <= 0) {
-      setError('今日AI快速记录次数已用完（每天5次）')
-      return
-    }
-
     setStage('processing')
     setError('')
-
     try {
+      const rem = await getRemainingUses(user.uid, 'quick')
+      setRemaining(rem)
+      if (rem <= 0) {
+        setError('今日AI快速记录次数已用完（每天5次）')
+        setStage('upload')
+        return
+      }
+
       const r = await analyzeQuickRecordPhoto(photoFile, description || undefined)
       setEditName(r.name)
       setEditIsComplete(r.isCompleteProtein)
@@ -147,7 +146,7 @@ export default function AIQuickRecordModal({ onClose }: Props) {
                       拍照/上传
                     </div>
                   )}
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="hidden" />
+                  <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
                 </label>
               </div>
 
