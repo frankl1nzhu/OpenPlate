@@ -125,7 +125,7 @@ export const useDailyLogStore = create<DailyLogState>()(
     }),
     {
       name: 'openplate-dailylog',
-      partialize: (state) => ({ selectedDate: state.selectedDate }),
+      partialize: () => ({}),
     },
   ),
 )
