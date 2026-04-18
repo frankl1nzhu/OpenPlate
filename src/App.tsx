@@ -16,6 +16,7 @@ import ScrollToTop from './components/ScrollToTop'
 import OfflineIndicator from './components/OfflineIndicator'
 import ToastContainer from './components/ToastContainer'
 import type { ReactNode } from 'react'
+import { useNotificationPermission } from './hooks/useNotificationPermission'
 
 function AuthGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -41,6 +42,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
 
 function AppShell() {
   useFirestoreSync()
+  useNotificationPermission()
 
   return (
     <div className="min-h-screen bg-gray-50">
