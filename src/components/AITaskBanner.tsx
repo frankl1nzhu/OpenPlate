@@ -73,11 +73,23 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
         if (photoURL) foodData.photoURL = photoURL
         await addFood(foodData as Parameters<typeof addFood>[0])
       } else {
-        // Add quick entry to the target date's log
+        // Upload the photo and add quick entry to the target date's log
+        let photoURL: string | undefined
+        try {
+          const resp = await fetch(task.photoDataURL)
+          const blob = await resp.blob()
+          const file = new File([blob], 'ai-quick.jpg', { type: 'image/jpeg' })
+          const compressed = await compressImage(file)
+          photoURL = await uploadPhoto(compressed, `quick-records/${Date.now()}_ai-quick.jpg`)
+        } catch {
+          // Photo upload failure is non-fatal
+        }
+
         await addEntry(user.uid, {
           type: 'quick',
           refId: '',
           name: editName.trim(),
+          ...(photoURL ? { photoURL } : {}),
           quantity: 1,
           nutrients: finalNutrients,
           timestamp: Date.now(),

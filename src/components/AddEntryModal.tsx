@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import { useFoodStore } from '../store/foodStore'
 import { useMealStore } from '../store/mealStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore'
 import { useUserProfileStore } from '../store/userProfileStore'
 import { multiplyNutrients, sumNutrients, getFoodUnits, calculateFoodNutrients } from '../lib/utils'
 import { calculateExerciseCalories } from '../lib/nutrition'
+import { uploadPhoto, compressImage } from '../lib/storage'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS, EXERCISE_TYPE_LABELS, EXERCISE_INTENSITY_LABELS } from '../types'
 import type { Nutrients, ExerciseType, ExerciseIntensity } from '../types'
@@ -37,6 +38,8 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
   const [quickIsComplete, setQuickIsComplete] = useState(false)
   const [quickNutrients, setQuickNutrients] = useState<Nutrients>({ ...EMPTY_NUTRIENTS })
   const [showQuickMicro, setShowQuickMicro] = useState(false)
+  const [quickPhotoFile, setQuickPhotoFile] = useState<File | null>(null)
+  const [quickPhotoPreview, setQuickPhotoPreview] = useState<string | null>(null)
 
   // Exercise state
   const [exType, setExType] = useState<ExerciseType>('running')
@@ -107,10 +110,20 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
         completeProtein: quickIsComplete ? quickProtein : 0,
         incompleteProtein: quickIsComplete ? 0 : quickProtein,
       }
+      let photoURL: string | undefined
+      if (quickPhotoFile) {
+        try {
+          const compressed = await compressImage(quickPhotoFile)
+          photoURL = await uploadPhoto(compressed, `quick-records/${Date.now()}_quick.jpg`)
+        } catch {
+          // Photo upload failure is non-fatal
+        }
+      }
       await addEntry(user.uid, {
         type: 'quick',
         refId: '',
         name: quickName.trim(),
+        ...(photoURL ? { photoURL } : {}),
         quantity: 1,
         nutrients,
         timestamp: Date.now(),
@@ -308,6 +321,36 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">照片（可选）</label>
+              <label className="cursor-pointer flex items-center gap-3">
+                {quickPhotoPreview ? (
+                  <img src={quickPhotoPreview} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 shrink-0">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                )}
+                <span className="text-sm text-blue-500">{quickPhotoPreview ? '重新选择' : '选择照片'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      if (quickPhotoPreview) URL.revokeObjectURL(quickPhotoPreview)
+                      setQuickPhotoFile(file)
+                      setQuickPhotoPreview(URL.createObjectURL(file))
+                    }
+                  }}
+                />
+              </label>
             </div>
 
             <div className="space-y-2">
