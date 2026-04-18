@@ -135,3 +135,13 @@ export async function analyzeQuickRecordPhoto(imageFile: File, description?: str
   const base64 = await fileToBase64(imageFile)
   return callLLM(base64, buildQuickRecordPrompt(description))
 }
+
+/** Same as analyzeFoodPhoto but accepts a base64 data URL directly (used when resuming after app close) */
+export async function analyzeFoodPhotoFromDataURL(dataURL: string, description?: string): Promise<LLMFoodResult> {
+  return callLLM(dataURL, buildFoodPrompt(description))
+}
+
+/** Same as analyzeQuickRecordPhoto but accepts a base64 data URL directly (used when resuming after app close) */
+export async function analyzeQuickRecordPhotoFromDataURL(dataURL: string, description?: string): Promise<LLMFoodResult> {
+  return callLLM(dataURL, buildQuickRecordPrompt(description))
+}

@@ -6,10 +6,12 @@ import { subscribeDailyLog, unsubscribeDailyLog, useDailyLogStore } from '../sto
 import { subscribeGoal, unsubscribeGoal } from '../store/goalStore'
 import { subscribeUserProfile, unsubscribeUserProfile } from '../store/userProfileStore'
 import { subscribeFitnessGoals, unsubscribeFitnessGoals } from '../store/fitnessGoalStore'
+import { useAiTaskStore } from '../store/aiTaskStore'
 
 export function useFirestoreSync() {
   const user = useAuthStore((s) => s.user)
   const selectedDate = useDailyLogStore((s) => s.selectedDate)
+  const resumeProcessingTasks = useAiTaskStore((s) => s.resumeProcessingTasks)
 
   useEffect(() => {
     if (!user) {
@@ -28,6 +30,9 @@ export function useFirestoreSync() {
     subscribeUserProfile(user.uid)
     subscribeFitnessGoals(user.uid)
 
+    // Resume any AI tasks that were in-flight when the app was last closed
+    resumeProcessingTasks(user.uid)
+
     return () => {
       unsubscribeFoods()
       unsubscribeMeals()
@@ -35,7 +40,7 @@ export function useFirestoreSync() {
       unsubscribeUserProfile()
       unsubscribeFitnessGoals()
     }
-  }, [user])
+  }, [user, resumeProcessingTasks])
 
   useEffect(() => {
     if (!user) return
