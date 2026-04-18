@@ -14,7 +14,7 @@ interface DailyLogState {
   selectedDate: string
   loading: boolean
   setSelectedDate: (date: string) => void
-  addEntry: (userId: string, entry: Omit<LogEntry, 'id'>) => Promise<void>
+  addEntry: (userId: string, entry: Omit<LogEntry, 'id'>, date?: string) => Promise<void>
   removeEntry: (userId: string, entryId: string) => Promise<void>
   addExercise: (userId: string, exercise: Omit<ExerciseEntry, 'id'>) => Promise<void>
   removeExercise: (userId: string, exerciseId: string) => Promise<void>
@@ -33,8 +33,8 @@ export const useDailyLogStore = create<DailyLogState>()(
         set({ selectedDate: date, currentLog: null, loading: true })
       },
 
-      addEntry: async (userId, entry) => {
-        const date = get().selectedDate
+      addEntry: async (userId, entry, explicitDate) => {
+        const date = explicitDate ?? get().selectedDate
         const docId = `${userId}_${date}`
         const newEntry: LogEntry = { ...entry, id: crypto.randomUUID() }
         const ref = doc(db, 'dailyLogs', docId)
