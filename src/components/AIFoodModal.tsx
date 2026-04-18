@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useFoodStore } from '../store/foodStore'
 import { useLLMUsageStore } from '../store/llmUsageStore'
+import { useToastStore } from '../store/toastStore'
 import { analyzeFoodPhoto, type LLMFoodResult } from '../lib/llm'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { useScrollLock } from '../hooks/useScrollLock'
@@ -21,6 +22,7 @@ export default function AIFoodModal({ onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const { addFood } = useFoodStore()
   const { getRemainingUses, recordUsage } = useLLMUsageStore()
+  const { addToast } = useToastStore()
 
   const [stage, setStage] = useState<Stage>('upload')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -70,6 +72,7 @@ export default function AIFoodModal({ onClose }: Props) {
       // Record usage only on success
       await recordUsage(user.uid, 'food')
       setRemaining(rem - 1)
+      addToast('AI食物识别完成，请验证结果', 'success')
     } catch (err) {
       console.error(err)
       setError('识别失败，请重试。' + (err instanceof Error ? err.message : ''))

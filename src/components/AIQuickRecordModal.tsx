@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useLLMUsageStore } from '../store/llmUsageStore'
+import { useToastStore } from '../store/toastStore'
 import { analyzeQuickRecordPhoto, type LLMFoodResult } from '../lib/llm'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
@@ -18,6 +19,7 @@ export default function AIQuickRecordModal({ onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const { addEntry } = useDailyLogStore()
   const { getRemainingUses, recordUsage } = useLLMUsageStore()
+  const { addToast } = useToastStore()
 
   const [stage, setStage] = useState<Stage>('upload')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -63,6 +65,7 @@ export default function AIQuickRecordModal({ onClose }: Props) {
       setStage('verify')
       await recordUsage(user.uid, 'quick')
       setRemaining(rem - 1)
+      addToast('AI快速记录识别完成，请验证结果', 'success')
     } catch (err) {
       console.error(err)
       setError('识别失败，请重试。' + (err instanceof Error ? err.message : ''))

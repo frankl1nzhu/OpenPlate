@@ -14,6 +14,7 @@ import VerifyEmailPage from './pages/VerifyEmailPage'
 import BottomNav from './components/BottomNav'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineIndicator from './components/OfflineIndicator'
+import ToastContainer from './components/ToastContainer'
 import type { ReactNode } from 'react'
 
 function AuthGuard({ children }: { children: ReactNode }) {
@@ -65,6 +66,7 @@ function App() {
     <BrowserRouter>
       <ScrollToTop />
       <OfflineIndicator />
+      <ToastContainer />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
