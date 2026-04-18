@@ -306,7 +306,8 @@ interface Props {
 }
 
 export default function AITaskBanner({ type }: Props) {
-  const tasks = useAiTaskStore((s) => s.tasks.filter((t) => t.type === type))
+  const allTasks = useAiTaskStore((s) => s.tasks)
+  const tasks = allTasks.filter((t) => t.type === type)
   if (tasks.length === 0) return null
   return (
     <div>
