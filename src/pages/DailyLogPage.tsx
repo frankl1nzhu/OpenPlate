@@ -10,6 +10,7 @@ import { adjustTargetsForExercise } from '../lib/nutrition'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
+import AIQuickRecordModal from '../components/AIQuickRecordModal'
 
 export default function DailyLogPage() {
   const user = useAuthStore((s) => s.user)
@@ -20,6 +21,7 @@ export default function DailyLogPage() {
   const { getActiveGoal } = useFitnessGoalStore()
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalTab, setAddModalTab] = useState<'food' | 'exercise'>('food')
+  const [showAIQuickModal, setShowAIQuickModal] = useState(false)
   const dateInputRef = useRef<HTMLInputElement>(null)
 
   const entries = currentLog?.entries ?? []
@@ -227,13 +229,22 @@ export default function DailyLogPage() {
       <div className="px-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-700">饮食记录</h3>
-          <button
-            onClick={() => { setAddModalTab('food'); setShowAddModal(true) }}
-            disabled={loading}
-            className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
-          >
-            + 添加
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAIQuickModal(true)}
+              disabled={loading}
+              className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              AI记录
+            </button>
+            <button
+              onClick={() => { setAddModalTab('food'); setShowAddModal(true) }}
+              disabled={loading}
+              className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              + 添加
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -330,6 +341,10 @@ export default function DailyLogPage() {
 
       {showAddModal && (
         <AddEntryModal defaultTab={addModalTab} onClose={() => setShowAddModal(false)} />
+      )}
+
+      {showAIQuickModal && (
+        <AIQuickRecordModal onClose={() => setShowAIQuickModal(false)} />
       )}
     </div>
   )
