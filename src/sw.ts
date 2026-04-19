@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
-import { registerRoute } from 'workbox-routing'
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
+import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
@@ -10,6 +10,9 @@ declare const self: ServiceWorkerGlobalScope
 // Precache all assets built by Vite (injected by vite-plugin-pwa)
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+// SPA navigation fallback: all page navigations return index.html from precache
+registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
 
 // Runtime cache for Firebase Storage images
 registerRoute(
@@ -65,3 +68,4 @@ self.addEventListener('notificationclick', (event) => {
     }),
   )
 })
+
