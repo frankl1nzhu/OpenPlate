@@ -1,13 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFoodStore } from '../store/foodStore'
+import { fetchUserProfiles } from '../store/userProfileStore'
 import { Link } from 'react-router-dom'
 import AIFoodModal from '../components/AIFoodModal'
 import AITaskBanner from '../components/AITaskBanner'
+import type { UserProfile } from '../types'
 
 export default function FoodListPage() {
   const { foods, loading } = useFoodStore()
   const [search, setSearch] = useState('')
   const [showAIModal, setShowAIModal] = useState(false)
+  const [creatorProfiles, setCreatorProfiles] = useState<Record<string, UserProfile>>({})
+
+  useEffect(() => {
+    if (foods.length === 0) return
+    const uids = [...new Set(foods.map((f) => f.createdBy).filter(Boolean))]
+    fetchUserProfiles(uids).then(setCreatorProfiles)
+  }, [foods])
 
   const filtered = foods.filter((f) =>
     f.name.toLowerCase().includes(search.toLowerCase()),
@@ -55,37 +64,43 @@ export default function FoodListPage() {
         </div>
       ) : (
         <div className="px-4 space-y-2 mt-2">
-          {filtered.map((food) => (
-            <Link
-              key={food.id}
-              to={`/foods/${food.id}`}
-              className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 active:bg-gray-50"
-            >
-              {food.photoURL ? (
-                <img
-                  src={food.photoURL}
-                  alt={food.name}
-                  className="w-12 h-12 rounded-lg object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-lg">
-                  {food.name[0]}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm truncate">{food.name}</div>
-                <div className="text-xs text-gray-400">
-                  每{food.defaultQuantity}{food.unit} · {food.nutrientsPerUnit.calories} kcal
-                  {food.isCompleteProtein && (
-                    <span className="ml-1 text-emerald-500">· 完全蛋白</span>
+          {filtered.map((food) => {
+            const creator = creatorProfiles[food.createdBy]
+            return (
+              <Link
+                key={food.id}
+                to={`/foods/${food.id}`}
+                className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 active:bg-gray-50"
+              >
+                {food.photoURL ? (
+                  <img
+                    src={food.photoURL}
+                    alt={food.name}
+                    className="w-12 h-12 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-lg">
+                    {food.name[0]}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{food.name}</div>
+                  <div className="text-xs text-gray-400">
+                    每{food.defaultQuantity}{food.unit} · {food.nutrientsPerUnit.calories} kcal
+                    {food.isCompleteProtein && (
+                      <span className="ml-1 text-emerald-500">· 完全蛋白</span>
+                    )}
+                  </div>
+                  {creator?.nickname && (
+                    <div className="text-xs text-gray-300 mt-0.5">by {creator.nickname}</div>
                   )}
                 </div>
-              </div>
-              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          ))}
+                <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            )
+          })}
         </div>
       )}
 
@@ -93,3 +108,4 @@ export default function FoodListPage() {
     </div>
   )
 }
+
