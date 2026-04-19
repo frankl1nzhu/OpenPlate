@@ -65,7 +65,12 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (goal?.targets) {
-      setTargets({ ...EMPTY_NUTRIENTS, ...goal.targets })
+      const t = { ...EMPTY_NUTRIENTS, ...goal.targets }
+      // Backward compat: derive protein total from complete+incomplete if not set
+      if (!t.protein) {
+        t.protein = t.completeProtein + t.incompleteProtein
+      }
+      setTargets(t)
     }
   }, [goal])
 
@@ -99,6 +104,15 @@ export default function SettingsPage() {
     const num = parseFloat(value) || 0
     setTargets((prev) => {
       const updated = { ...prev, [key]: Math.min(num, 99999) }
+      // When protein total changes, auto-split 6:4 into complete/incomplete
+      if (key === 'protein') {
+        updated.completeProtein = Math.round(num * 0.6)
+        updated.incompleteProtein = Math.round(num * 0.4)
+      }
+      // When complete/incomplete changes, sync total protein
+      if (key === 'completeProtein' || key === 'incompleteProtein') {
+        updated.protein = updated.completeProtein + updated.incompleteProtein
+      }
       // Auto-compute calories from macros (not directly editable)
       updated.calories = Math.round(
         (updated.completeProtein + updated.incompleteProtein) * 4
@@ -562,21 +576,26 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-400 -mt-1">由碳水、蛋白质、脂肪自动计算</p>
 
               {MACRO_KEYS.filter((k) => k !== 'calories').map((key) => (
-                <div key={key} className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 w-24 shrink-0">
-                    {NUTRIENT_LABELS[key]}
-                  </label>
-                  <input
-                    type="number"
-                    value={targets[key] || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    min={0}
-                    max={99999}
-                    step="any"
-                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="0"
-                  />
-                  <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+                <div key={key}>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 w-24 shrink-0">
+                      {NUTRIENT_LABELS[key]}
+                    </label>
+                    <input
+                      type="number"
+                      value={targets[key] || ''}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      min={0}
+                      max={99999}
+                      step="any"
+                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="0"
+                    />
+                    <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+                  </div>
+                  {key === 'protein' && (
+                    <p className="text-xs text-gray-400 mt-0.5 ml-26">自动按 6:4 分配为完全/不完全蛋白</p>
+                  )}
                 </div>
               ))}
 

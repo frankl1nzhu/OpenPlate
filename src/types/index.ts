@@ -1,6 +1,7 @@
 export interface Nutrients {
   calories: number        // 热量 (kcal)
   carbs: number           // 碳水化合物 (g)
+  protein: number         // 蛋白质总量 (g) = completeProtein + incompleteProtein
   completeProtein: number // 完全蛋白 (g)
   incompleteProtein: number // 不完全蛋白 (g)
   fat: number             // 脂肪 (g)
@@ -40,6 +41,7 @@ export interface Nutrients {
 export const EMPTY_NUTRIENTS: Nutrients = {
   calories: 0,
   carbs: 0,
+  protein: 0,
   completeProtein: 0,
   incompleteProtein: 0,
   fat: 0,
@@ -77,7 +79,7 @@ export const EMPTY_NUTRIENTS: Nutrients = {
 
 // 宏量营养素 keys
 export const MACRO_KEYS: (keyof Nutrients)[] = [
-  'calories', 'carbs', 'completeProtein', 'incompleteProtein', 'fat', 'saturatedFat', 'monounsaturatedFat', 'polyunsaturatedFat', 'fiber', 'sodium',
+  'calories', 'carbs', 'protein', 'completeProtein', 'incompleteProtein', 'fat', 'saturatedFat', 'monounsaturatedFat', 'polyunsaturatedFat', 'fiber', 'sodium',
 ]
 
 // 微量元素 keys
@@ -94,6 +96,7 @@ export const ALL_NUTRIENT_KEYS: (keyof Nutrients)[] = [...MACRO_KEYS, ...MICRO_K
 export const NUTRIENT_LABELS: Record<keyof Nutrients, string> = {
   calories: '热量',
   carbs: '碳水',
+  protein: '蛋白质',
   completeProtein: '完全蛋白',
   incompleteProtein: '不完全蛋白',
   fat: '脂肪',
@@ -132,6 +135,7 @@ export const NUTRIENT_LABELS: Record<keyof Nutrients, string> = {
 export const NUTRIENT_UNITS: Record<keyof Nutrients, string> = {
   calories: 'kcal',
   carbs: 'g',
+  protein: 'g',
   completeProtein: 'g',
   incompleteProtein: 'g',
   fat: 'g',

@@ -140,6 +140,10 @@ export default function DailyLogPage() {
   const showProtein = isActive('completeProtein') || isActive('incompleteProtein')
   const showFat = isActive('fat') || isActive('saturatedFat') || isActive('monounsaturatedFat') || isActive('polyunsaturatedFat')
 
+  // Total protein for 'protein' bar: actual = complete + incomplete; target from goal
+  const totalProteinActual = totalNutrients.completeProtein + totalNutrients.incompleteProtein
+  const totalProteinTarget = targets.protein || (targets.completeProtein + targets.incompleteProtein)
+
   return (
     <div className="pb-20">
       {/* Date selector */}
@@ -224,6 +228,8 @@ export default function DailyLogPage() {
         <div className="space-y-2.5">
           {isActive('calories') && renderNRow('热量', totalNutrients.calories, targets.calories, 'kcal')}
           {isActive('carbs') && renderNRow('碳水', totalNutrients.carbs, targets.carbs, 'g')}
+
+          {isActive('protein') && renderNRow('蛋白质', totalProteinActual, totalProteinTarget, 'g')}
 
           {showProtein && (
             <>

@@ -104,6 +104,7 @@ export function calculateRecommendedTargets(
     ...EMPTY_NUTRIENTS,
     calories: Math.round(proteinCalories + fatCalories + Math.max(0, carbCalories)),
     carbs: totalCarbs,
+    protein: totalProtein,
     completeProtein:   Math.round(totalProtein * 0.6),
     incompleteProtein: Math.round(totalProtein * 0.4),
     fat: totalFat,
