@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useLLMUsageStore } from '../store/llmUsageStore'
 import { useAiTaskStore } from '../store/aiTaskStore'
+import { getFCMToken } from '../lib/fcm'
 import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
@@ -42,7 +43,7 @@ export default function AIFoodModal({ onClose }: Props) {
         return
       }
       // Start background task and close immediately
-      await startFoodTask(user.uid, photoFile, description || undefined)
+      await startFoodTask(user.uid, photoFile, getFCMToken(), description || undefined)
       onClose()
     } catch (err) {
       setError('启动失败，请重试')

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useLLMUsageStore } from '../store/llmUsageStore'
 import { useAiTaskStore } from '../store/aiTaskStore'
+import { getFCMToken } from '../lib/fcm'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useScrollLock } from '../hooks/useScrollLock'
 
@@ -44,7 +45,7 @@ export default function AIQuickRecordModal({ onClose }: Props) {
         return
       }
       // Capture selectedDate so the entry lands on the right day even if confirmed later
-      await startQuickTask(user.uid, photoFile, description || undefined, selectedDate)
+      await startQuickTask(user.uid, photoFile, getFCMToken(), description || undefined, selectedDate)
       onClose()
     } catch (err) {
       setError('启动失败，请重试')

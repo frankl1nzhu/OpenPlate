@@ -4,6 +4,13 @@ import { messagingPromise, db } from './firebase'
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string
 
+let currentToken: string | null = null
+
+/** Get the current FCM token (null if not yet obtained or unsupported) */
+export function getFCMToken(): string | null {
+  return currentToken
+}
+
 /** Request FCM token and save it to userProfiles/{userId}.fcmToken */
 export async function requestFCMToken(userId: string): Promise<string | null> {
   const messaging = await messagingPromise
@@ -12,6 +19,7 @@ export async function requestFCMToken(userId: string): Promise<string | null> {
   try {
     const token = await getToken(messaging, { vapidKey: VAPID_KEY })
     if (token) {
+      currentToken = token
       await setDoc(doc(db, 'userProfiles', userId), { fcmToken: token }, { merge: true })
     }
     return token

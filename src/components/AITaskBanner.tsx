@@ -3,7 +3,6 @@ import { useAiTaskStore, type AiTask } from '../store/aiTaskStore'
 import { useAuthStore } from '../store/authStore'
 import { useFoodStore } from '../store/foodStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
-import { uploadPhoto, compressImage } from '../lib/storage'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
 import type { Nutrients } from '../types'
@@ -48,18 +47,7 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
       }
 
       if (task.type === 'food') {
-        // Upload the photo and create the food
-        let photoURL: string | undefined
-        try {
-          const resp = await fetch(task.photoDataURL)
-          const blob = await resp.blob()
-          const file = new File([blob], 'ai-food.jpg', { type: 'image/jpeg' })
-          const compressed = await compressImage(file)
-          photoURL = await uploadPhoto(compressed, `foods/${Date.now()}_ai-food.jpg`)
-        } catch {
-          // Photo upload failure is non-fatal
-        }
-
+        // Photo is already in Storage — use its download URL directly
         const foodData: Record<string, unknown> = {
           name: editName.trim(),
           unit: 'g',
@@ -70,26 +58,15 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
           createdBy: user.uid,
           createdAt: Date.now(),
         }
-        if (photoURL) foodData.photoURL = photoURL
+        if (task.photoDownloadURL) foodData.photoURL = task.photoDownloadURL
         await addFood(foodData as Parameters<typeof addFood>[0])
       } else {
-        // Upload the photo and add quick entry to the target date's log
-        let photoURL: string | undefined
-        try {
-          const resp = await fetch(task.photoDataURL)
-          const blob = await resp.blob()
-          const file = new File([blob], 'ai-quick.jpg', { type: 'image/jpeg' })
-          const compressed = await compressImage(file)
-          photoURL = await uploadPhoto(compressed, `quick-records/${Date.now()}_ai-quick.jpg`)
-        } catch {
-          // Photo upload failure is non-fatal
-        }
-
+        // Photo is already in Storage — use its download URL directly
         await addEntry(user.uid, {
           type: 'quick',
           refId: '',
           name: editName.trim(),
-          ...(photoURL ? { photoURL } : {}),
+          ...(task.photoDownloadURL ? { photoURL: task.photoDownloadURL } : {}),
           quantity: 1,
           nutrients: finalNutrients,
           timestamp: Date.now(),
@@ -133,7 +110,7 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
           </div>
 
           <div className="flex justify-center">
-            <img src={task.photoDataURL} alt="" className="w-20 h-20 rounded-xl object-cover" />
+            {task.photoDownloadURL && <img src={task.photoDownloadURL} alt="" className="w-20 h-20 rounded-xl object-cover" />}
           </div>
 
           <div>
@@ -260,7 +237,7 @@ function TaskCard({ task }: { task: AiTask }) {
             <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <img src={task.photoDataURL} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
+          <img src={task.photoDownloadURL} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
         )}
 
         <div className="flex-1 min-w-0">
