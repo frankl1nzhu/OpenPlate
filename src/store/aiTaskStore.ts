@@ -33,7 +33,7 @@ interface AiTaskState {
   tasks: AiTask[]
   startFoodTask: (userId: string, photoFile: File, fcmToken: string | null, description?: string) => Promise<void>
   startQuickTask: (userId: string, photoFile: File, fcmToken: string | null, description?: string, targetDate?: string) => Promise<void>
-  dismissTask: (id: string) => void
+  dismissTask: (id: string, keepPhoto?: boolean) => void
 }
 
 let unsubAiTasks: Unsubscribe | null = null
@@ -116,12 +116,12 @@ export const useAiTaskStore = create<AiTaskState>()((set, get) => ({
     })
   },
 
-  dismissTask: (id) => {
+  dismissTask: (id, keepPhoto = false) => {
     const task = get().tasks.find((t) => t.id === id)
     // Delete Firestore doc
     deleteDoc(doc(db, 'aiTasks', id)).catch(console.warn)
-    // Delete Storage photo
-    if (task?.photoStoragePath) {
+    // Only delete Storage photo when the user cancels — not when confirming (keepPhoto=true)
+    if (!keepPhoto && task?.photoStoragePath) {
       deleteObject(ref(storage, task.photoStoragePath)).catch(console.warn)
     }
     // Optimistic local removal
