@@ -18,6 +18,7 @@ import ToastContainer from './components/ToastContainer'
 import ErrorBoundary from './components/ErrorBoundary'
 import type { ReactNode } from 'react'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
+import { useFCM } from './hooks/useFCM'
 
 function AuthGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -44,6 +45,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
 function AppShell() {
   useFirestoreSync()
   useNotificationPermission()
+  useFCM()
 
   return (
     <div className="min-h-screen bg-gray-50">
