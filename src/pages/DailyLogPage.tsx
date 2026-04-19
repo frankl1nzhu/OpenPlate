@@ -126,10 +126,10 @@ export default function DailyLogPage() {
               strokeLinecap="round"
             />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-1 gap-0.5">
-            <span className="text-[8px] leading-tight text-gray-500 text-center">{label}</span>
-            <span className="text-[11px] font-bold text-gray-800 tabular-nums leading-tight">{Math.round(actual)}</span>
-            <span className="text-[7px] text-gray-400 leading-none">{unit}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-1.5 gap-0.5">
+            <span className="text-[10px] leading-tight text-gray-500 text-center">{label}</span>
+            <span className="text-[13px] font-bold text-gray-800 tabular-nums leading-tight">{Math.round(actual)}</span>
+            <span className="text-[9px] text-gray-400 leading-none tabular-nums">/{Math.round(target)} {unit}</span>
           </div>
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function DailyLogPage() {
         )}
 
         {/* Nutrient rings */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-3">
           {isActive('calories') && renderNRing('热量', totalNutrients.calories, targets.calories, 'kcal')}
           {isActive('carbs') && renderNRing('碳水', totalNutrients.carbs, targets.carbs, 'g')}
           {isActive('protein') && renderNRing('蛋白质', totalProteinActual, totalProteinTarget, 'g')}
