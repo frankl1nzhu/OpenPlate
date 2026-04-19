@@ -97,24 +97,23 @@ export default function DailyLogPage() {
     return 'bg-amber-500'
   }
 
-  // Two-line row: label + value on top, full-width progress bar below.
-  // All bars span the same full width. Child rows indent only the text line, not the bar.
+  // Layout: label left (vertically centered), right 1/3-width block with value on top + bar below
   const renderNRow = (label: string, actual: number, target: number, unit: string, indented = false) => {
     const pct = target > 0 ? Math.min(100, (actual / target) * 100) : 0
     return (
-      <div className={indented ? 'pl-4' : ''}>
-        <div className="flex items-baseline justify-between mb-1">
-          <span className="text-xs text-gray-600 whitespace-nowrap">{label}</span>
-          <span className="text-xs tabular-nums ml-2 whitespace-nowrap shrink-0">
+      <div className={`flex items-center gap-3 ${indented ? 'pl-4' : ''}`}>
+        <span className="flex-1 text-xs text-gray-600">{label}</span>
+        <div className="w-1/3 shrink-0">
+          <div className="text-xs tabular-nums text-right mb-1 whitespace-nowrap">
             <span className="text-gray-700">{Math.round(actual)}</span>
             <span className="text-gray-400"> / {Math.round(target)} {unit}</span>
-          </span>
-        </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${getProgressColor(actual, target)}`}
-            style={{ width: `${pct}%` }}
-          />
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${getProgressColor(actual, target)}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
         </div>
       </div>
     )
@@ -138,7 +137,7 @@ export default function DailyLogPage() {
   }
 
   const showProtein = isActive('completeProtein') || isActive('incompleteProtein')
-  const showFat = isActive('fat') || isActive('saturatedFat') || isActive('monounsaturatedFat') || isActive('polyunsaturatedFat')
+  const showFatSubtypes = isActive('saturatedFat') || isActive('monounsaturatedFat') || isActive('polyunsaturatedFat')
 
   // Total protein for 'protein' bar: actual = complete + incomplete; target from goal
   const totalProteinActual = totalNutrients.completeProtein + totalNutrients.incompleteProtein
@@ -239,10 +238,11 @@ export default function DailyLogPage() {
             </>
           )}
 
-          {showFat && (
+          {isActive('fat') && renderNRow('脂肪', totalNutrients.fat, targets.fat, 'g')}
+
+          {showFatSubtypes && (
             <>
               {renderParentLabel('脂肪')}
-              {isActive('fat') && renderNRow('脂肪总量', totalNutrients.fat, targets.fat, 'g', true)}
               {isActive('saturatedFat') && renderNRow('饱和脂肪', totalNutrients.saturatedFat, targets.saturatedFat, 'g', true)}
               {isActive('monounsaturatedFat') && renderNRow('单不饱和脂肪', totalNutrients.monounsaturatedFat, targets.monounsaturatedFat, 'g', true)}
               {isActive('polyunsaturatedFat') && renderNRow('多不饱和脂肪', totalNutrients.polyunsaturatedFat, targets.polyunsaturatedFat, 'g', true)}
