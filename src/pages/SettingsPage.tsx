@@ -885,6 +885,10 @@ export default function SettingsPage() {
           退出登录
         </button>
       </div>
+
+      <div className="mt-6 pb-2 text-center">
+        <span className="text-xs text-gray-300">v{__APP_VERSION__}</span>
+      </div>
     </div>
   )
 }

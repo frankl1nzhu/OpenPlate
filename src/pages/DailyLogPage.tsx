@@ -186,6 +186,31 @@ export default function DailyLogPage() {
       {/* AI task status banner */}
       <AITaskBanner type="quick" />
 
+      {/* Quick action buttons */}
+      <div className="px-4 py-2 bg-white border-b border-gray-100 flex gap-2">
+        <button
+          onClick={() => setShowAIQuickModal(true)}
+          disabled={loading}
+          className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+        >
+          AI快速记录
+        </button>
+        <button
+          onClick={() => { setAddModalTab('food'); setShowAddModal(true) }}
+          disabled={loading}
+          className="flex-1 bg-emerald-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+        >
+          + 添加饮食
+        </button>
+        <button
+          onClick={() => { setAddModalTab('exercise'); setShowAddModal(true) }}
+          disabled={loading}
+          className="flex-1 bg-purple-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+        >
+          + 添加运动
+        </button>
+      </div>
+
       {/* Nutrient summary */}
       <div className="px-4 py-3 bg-white mb-2">
         {/* Exercise calories */}
@@ -231,24 +256,8 @@ export default function DailyLogPage() {
 
       {/* Entry list */}
       <div className="px-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2">
           <h3 className="text-sm font-medium text-gray-700">饮食记录</h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAIQuickModal(true)}
-              disabled={loading}
-              className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
-            >
-              AI记录
-            </button>
-            <button
-              onClick={() => { setAddModalTab('food'); setShowAddModal(true) }}
-              disabled={loading}
-              className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
-            >
-              + 添加
-            </button>
-          </div>
         </div>
 
         {loading ? (
@@ -298,15 +307,8 @@ export default function DailyLogPage() {
 
       {/* Exercise records */}
       <div className="px-4 mt-2">
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2">
           <h3 className="text-sm font-medium text-gray-700">运动记录</h3>
-          <button
-            onClick={() => { setAddModalTab('exercise'); setShowAddModal(true) }}
-            disabled={loading}
-            className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
-          >
-            + 添加
-          </button>
         </div>
 
         {exercises.length === 0 ? (
