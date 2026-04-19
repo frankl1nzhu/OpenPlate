@@ -25,7 +25,7 @@ export async function deletePhoto(urlOrPath: string): Promise<void> {
   }
 }
 
-export function compressImage(file: File, maxWidth = 800): Promise<File> {
+export function compressImage(file: File, size = 180): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     const canvas = document.createElement('canvas')
@@ -37,14 +37,18 @@ export function compressImage(file: File, maxWidth = 800): Promise<File> {
         return
       }
 
-      let { width, height } = img
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width
-        width = maxWidth
-      }
-      canvas.width = width
-      canvas.height = height
-      ctx.drawImage(img, 0, 0, width, height)
+      const { width, height } = img
+      canvas.width = size
+      canvas.height = size
+
+      // Center-crop to size×size (object-cover behavior)
+      const scale = Math.max(size / width, size / height)
+      const scaledW = width * scale
+      const scaledH = height * scale
+      const offsetX = (scaledW - size) / 2
+      const offsetY = (scaledH - size) / 2
+      ctx.drawImage(img, -offsetX, -offsetY, scaledW, scaledH)
+
       canvas.toBlob(
         (blob) => {
           if (!blob) {

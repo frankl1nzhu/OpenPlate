@@ -6,7 +6,7 @@ import { useDailyLogStore } from '../store/dailyLogStore'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
 import type { Nutrients } from '../types'
-import { uploadPhoto } from '../lib/storage'
+import { uploadPhoto, compressImage } from '../lib/storage'
 
 // ─── Verify modal ────────────────────────────────────────────────────────────
 
@@ -55,7 +55,8 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
           try {
             const resp = await fetch(task.photoDownloadURL)
             const blob = await resp.blob()
-            const photoFile = new File([blob], `${Date.now()}.jpg`, { type: 'image/jpeg' })
+            const rawFile = new File([blob], `${Date.now()}.jpg`, { type: 'image/jpeg' })
+            const photoFile = await compressImage(rawFile)
             persistedPhotoURL = await uploadPhoto(photoFile, `foods/${Date.now()}_ai.jpg`)
           } catch {
             persistedPhotoURL = task.photoDownloadURL // fallback: keep original URL

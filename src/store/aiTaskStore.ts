@@ -74,8 +74,7 @@ export const useAiTaskStore = create<AiTaskState>()((set, get) => ({
     const id = crypto.randomUUID()
     const storagePath = `ai-tasks/${id}.jpg`
 
-    // Compress and upload photo
-    const compressed = await compressImage(photoFile, 800)
+    const compressed = await compressImage(photoFile)
     const storageRef = ref(storage, storagePath)
     await uploadBytes(storageRef, compressed)
     const photoDownloadURL = await getDownloadURL(storageRef)
@@ -99,7 +98,7 @@ export const useAiTaskStore = create<AiTaskState>()((set, get) => ({
     const storagePath = `ai-tasks/${id}.jpg`
     const date = targetDate ?? formatDate(new Date())
 
-    const compressed = await compressImage(photoFile, 800)
+    const compressed = await compressImage(photoFile)
     const storageRef = ref(storage, storagePath)
     await uploadBytes(storageRef, compressed)
     const photoDownloadURL = await getDownloadURL(storageRef)
