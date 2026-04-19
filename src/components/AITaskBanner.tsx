@@ -76,12 +76,25 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
         if (persistedPhotoURL) foodData.photoURL = persistedPhotoURL
         await addFood(foodData as Parameters<typeof addFood>[0])
       } else {
-        // Photo is already in Storage — use its download URL directly
+        // Re-upload photo to permanent quick-records/ path.
+        // The ai-tasks/ file is deleted by dismissTask(), so we must move it first.
+        let persistedPhotoURL: string | undefined
+        if (task.photoDownloadURL) {
+          try {
+            const resp = await fetch(task.photoDownloadURL)
+            const blob = await resp.blob()
+            const rawFile = new File([blob], `${Date.now()}.jpg`, { type: 'image/jpeg' })
+            const photoFile = await compressImage(rawFile)
+            persistedPhotoURL = await uploadPhoto(photoFile, `quick-records/${Date.now()}_ai.jpg`)
+          } catch {
+            persistedPhotoURL = task.photoDownloadURL // fallback: keep original URL
+          }
+        }
         await addEntry(user.uid, {
           type: 'quick',
           refId: '',
           name: editName.trim(),
-          ...(task.photoDownloadURL ? { photoURL: task.photoDownloadURL } : {}),
+          ...(persistedPhotoURL ? { photoURL: persistedPhotoURL } : {}),
           quantity: 1,
           nutrients: finalNutrients,
           timestamp: Date.now(),
