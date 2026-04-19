@@ -6,6 +6,7 @@ import { useDailyLogStore } from '../store/dailyLogStore'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
 import type { Nutrients } from '../types'
+import { uploadPhoto } from '../lib/storage'
 
 // ─── Verify modal ────────────────────────────────────────────────────────────
 
@@ -47,6 +48,19 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
       }
 
       if (task.type === 'food') {
+        // Re-upload photo to permanent foods/ path so all users can see it.
+        // The ai-tasks/ file is deleted by dismissTask(), so we must move it first.
+        let persistedPhotoURL: string | undefined
+        if (task.photoDownloadURL) {
+          try {
+            const resp = await fetch(task.photoDownloadURL)
+            const blob = await resp.blob()
+            const photoFile = new File([blob], `${Date.now()}.jpg`, { type: 'image/jpeg' })
+            persistedPhotoURL = await uploadPhoto(photoFile, `foods/${Date.now()}_ai.jpg`)
+          } catch {
+            persistedPhotoURL = task.photoDownloadURL // fallback: keep original URL
+          }
+        }
         // Photo is already in Storage — use its download URL directly
         const foodData: Record<string, unknown> = {
           name: editName.trim(),
@@ -58,7 +72,7 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
           createdBy: user.uid,
           createdAt: Date.now(),
         }
-        if (task.photoDownloadURL) foodData.photoURL = task.photoDownloadURL
+        if (persistedPhotoURL) foodData.photoURL = persistedPhotoURL
         await addFood(foodData as Parameters<typeof addFood>[0])
       } else {
         // Photo is already in Storage — use its download URL directly
