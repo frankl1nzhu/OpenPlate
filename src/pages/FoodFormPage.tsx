@@ -12,8 +12,12 @@ export default function FoodFormPage() {
   const navigate = useNavigate()
   const { foods, addFood, updateFood, requestDelete } = useFoodStore()
   const user = useAuthStore((s) => s.user)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const existing = id && id !== 'new' ? foods.find((f) => f.id === id) : null
+
+  // Only the food creator or admin can edit an existing food
+  const canEdit = !existing || existing.createdBy === user?.uid || isAdmin
 
   const [name, setName] = useState('')
   const [baseUnit, setBaseUnit] = useState('g')
@@ -27,6 +31,12 @@ export default function FoodFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [showMicro, setShowMicro] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  useEffect(() => {
+    if (existing && !canEdit) {
+      navigate('/foods', { replace: true })
+    }
+  }, [existing, canEdit, navigate])
 
   useEffect(() => {
     if (existing) {

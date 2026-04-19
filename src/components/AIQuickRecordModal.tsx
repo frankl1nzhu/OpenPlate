@@ -13,6 +13,7 @@ interface Props {
 export default function AIQuickRecordModal({ onClose }: Props) {
   useScrollLock(true)
   const user = useAuthStore((s) => s.user)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
   const { getRemainingUses } = useLLMUsageStore()
   const { startQuickTask } = useAiTaskStore()
   const selectedDate = useDailyLogStore((s) => s.selectedDate)
@@ -38,11 +39,13 @@ export default function AIQuickRecordModal({ onClose }: Props) {
     setStarting(true)
     setError('')
     try {
-      const rem = await getRemainingUses(user.uid, 'quick')
-      if (rem <= 0) {
-        setError('今日AI快速记录次数已用完（每天5次）')
-        setStarting(false)
-        return
+      if (!isAdmin) {
+        const rem = await getRemainingUses(user.uid, 'quick')
+        if (rem <= 0) {
+          setError('今日AI快速记录次数已用完（每天5次）')
+          setStarting(false)
+          return
+        }
       }
       // Capture selectedDate so the entry lands on the right day even if confirmed later
       await startQuickTask(user.uid, photoFile, getFCMToken(), description || undefined, selectedDate)

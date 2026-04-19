@@ -12,6 +12,7 @@ interface Props {
 export default function AIFoodModal({ onClose }: Props) {
   useScrollLock(true)
   const user = useAuthStore((s) => s.user)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
   const { getRemainingUses } = useLLMUsageStore()
   const { startFoodTask } = useAiTaskStore()
 
@@ -36,11 +37,13 @@ export default function AIFoodModal({ onClose }: Props) {
     setStarting(true)
     setError('')
     try {
-      const rem = await getRemainingUses(user.uid, 'food')
-      if (rem <= 0) {
-        setError('今日AI识别次数已用完（每天5次）')
-        setStarting(false)
-        return
+      if (!isAdmin) {
+        const rem = await getRemainingUses(user.uid, 'food')
+        if (rem <= 0) {
+          setError('今日AI识别次数已用完（每天5次）')
+          setStarting(false)
+          return
+        }
       }
       // Start background task and close immediately
       await startFoodTask(user.uid, photoFile, getFCMToken(), description || undefined)
