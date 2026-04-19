@@ -89,39 +89,52 @@ export default function DailyLogPage() {
     return inSelected && (targets[key] || 0) > 0
   }
 
-  const getProgressColor = (actual: number, target: number) => {
-    if (!target) return 'bg-emerald-400'
+  const getRingColor = (actual: number, target: number) => {
+    if (!target) return '#34d399'
     const pct = (actual / target) * 100
-    if (pct < 80) return 'bg-emerald-400'
-    if (pct <= 100) return 'bg-emerald-500'
-    return 'bg-amber-500'
+    if (pct < 80) return '#34d399'   // emerald-400
+    if (pct <= 100) return '#10b981' // emerald-500
+    return '#f59e0b'                 // amber-500
   }
 
-  // Layout: label left (vertically centered), right 1/3-width block with value on top + bar below
-  const renderNRow = (label: string, actual: number, target: number, unit: string, indented = false) => {
+  const renderNRing = (label: string, actual: number, target: number, unit: string) => {
     const pct = target > 0 ? Math.min(100, (actual / target) * 100) : 0
+    const r = 24
+    const sw = 4
+    const vb = 60
+    const cx = 30
+    const circ = 2 * Math.PI * r
+    const dash = circ * (1 - pct / 100)
+    const color = getRingColor(actual, target)
+
     return (
-      <div className={`flex items-center gap-3 ${indented ? 'pl-4' : ''}`}>
-        <span className="flex-1 text-xs text-gray-600">{label}</span>
-        <div className="w-1/3 shrink-0">
-          <div className="text-xs tabular-nums text-right mb-1 whitespace-nowrap">
-            <span className="text-gray-700">{Math.round(actual)}</span>
-            <span className="text-gray-400"> / {Math.round(target)} {unit}</span>
-          </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${getProgressColor(actual, target)}`}
-              style={{ width: `${pct}%` }}
+      <div className="flex flex-col items-center">
+        <div className="relative w-full aspect-square">
+          <svg
+            viewBox={`0 0 ${vb} ${vb}`}
+            className="absolute inset-0 w-full h-full"
+            style={{ transform: 'rotate(-90deg)' }}
+          >
+            <circle cx={cx} cy={cx} r={r} fill="none" stroke="#f3f4f6" strokeWidth={sw} />
+            <circle
+              cx={cx} cy={cx} r={r}
+              fill="none"
+              stroke={color}
+              strokeWidth={sw}
+              strokeDasharray={circ}
+              strokeDashoffset={dash}
+              strokeLinecap="round"
             />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-1 gap-0.5">
+            <span className="text-[8px] leading-tight text-gray-500 text-center">{label}</span>
+            <span className="text-[11px] font-bold text-gray-800 tabular-nums leading-tight">{Math.round(actual)}</span>
+            <span className="text-[7px] text-gray-400 leading-none">{unit}</span>
           </div>
         </div>
       </div>
     )
   }
-
-  const renderParentLabel = (label: string) => (
-    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide pt-1">{label}</div>
-  )
 
   const getEntryIconClass = (type: string) => {
     if (type === 'quick') return 'bg-blue-100 text-blue-600'
@@ -136,10 +149,7 @@ export default function DailyLogPage() {
     return entry.type === 'food' ? '食' : '餐'
   }
 
-  const showProtein = isActive('completeProtein') || isActive('incompleteProtein')
-  const showFatSubtypes = isActive('saturatedFat') || isActive('monounsaturatedFat') || isActive('polyunsaturatedFat')
-
-  // Total protein for 'protein' bar: actual = complete + incomplete; target from goal
+  // Total protein: actual = complete + incomplete; target from goal
   const totalProteinActual = totalNutrients.completeProtein + totalNutrients.incompleteProtein
   const totalProteinTarget = targets.protein || (targets.completeProtein + targets.incompleteProtein)
 
@@ -223,38 +233,22 @@ export default function DailyLogPage() {
           </div>
         )}
 
-        {/* Hierarchical nutrient rows */}
-        <div className="space-y-2.5">
-          {isActive('calories') && renderNRow('热量', totalNutrients.calories, targets.calories, 'kcal')}
-          {isActive('carbs') && renderNRow('碳水', totalNutrients.carbs, targets.carbs, 'g')}
-
-          {isActive('protein') && renderNRow('蛋白质', totalProteinActual, totalProteinTarget, 'g')}
-
-          {showProtein && (
-            <>
-              {renderParentLabel('蛋白')}
-              {isActive('completeProtein') && renderNRow('完全蛋白', totalNutrients.completeProtein, targets.completeProtein, 'g', true)}
-              {isActive('incompleteProtein') && renderNRow('不完全蛋白', totalNutrients.incompleteProtein, targets.incompleteProtein, 'g', true)}
-            </>
-          )}
-
-          {isActive('fat') && renderNRow('脂肪', totalNutrients.fat, targets.fat, 'g')}
-
-          {showFatSubtypes && (
-            <>
-              {renderParentLabel('脂肪')}
-              {isActive('saturatedFat') && renderNRow('饱和脂肪', totalNutrients.saturatedFat, targets.saturatedFat, 'g', true)}
-              {isActive('monounsaturatedFat') && renderNRow('单不饱和脂肪', totalNutrients.monounsaturatedFat, targets.monounsaturatedFat, 'g', true)}
-              {isActive('polyunsaturatedFat') && renderNRow('多不饱和脂肪', totalNutrients.polyunsaturatedFat, targets.polyunsaturatedFat, 'g', true)}
-            </>
-          )}
-
-          {isActive('fiber') && renderNRow('膳食纤维', totalNutrients.fiber, targets.fiber, 'g')}
-          {isActive('sodium') && renderNRow('钠', totalNutrients.sodium, targets.sodium, 'mg')}
-
+        {/* Nutrient rings */}
+        <div className="grid grid-cols-4 gap-2">
+          {isActive('calories') && renderNRing('热量', totalNutrients.calories, targets.calories, 'kcal')}
+          {isActive('carbs') && renderNRing('碳水', totalNutrients.carbs, targets.carbs, 'g')}
+          {isActive('protein') && renderNRing('蛋白质', totalProteinActual, totalProteinTarget, 'g')}
+          {isActive('completeProtein') && renderNRing('完全蛋白', totalNutrients.completeProtein, targets.completeProtein, 'g')}
+          {isActive('incompleteProtein') && renderNRing('不完全蛋白', totalNutrients.incompleteProtein, targets.incompleteProtein, 'g')}
+          {isActive('fat') && renderNRing('脂肪', totalNutrients.fat, targets.fat, 'g')}
+          {isActive('saturatedFat') && renderNRing('饱和脂肪', totalNutrients.saturatedFat, targets.saturatedFat, 'g')}
+          {isActive('monounsaturatedFat') && renderNRing('单不饱和', totalNutrients.monounsaturatedFat, targets.monounsaturatedFat, 'g')}
+          {isActive('polyunsaturatedFat') && renderNRing('多不饱和', totalNutrients.polyunsaturatedFat, targets.polyunsaturatedFat, 'g')}
+          {isActive('fiber') && renderNRing('膳食纤维', totalNutrients.fiber, targets.fiber, 'g')}
+          {isActive('sodium') && renderNRing('钠', totalNutrients.sodium, targets.sodium, 'mg')}
           {MICRO_KEYS.filter(isActive).map((key) => (
-            <div key={key}>
-              {renderNRow(NUTRIENT_LABELS[key], totalNutrients[key], targets[key], NUTRIENT_UNITS[key])}
+            <div key={key} style={{ display: 'contents' }}>
+              {renderNRing(NUTRIENT_LABELS[key], totalNutrients[key], targets[key], NUTRIENT_UNITS[key])}
             </div>
           ))}
         </div>
