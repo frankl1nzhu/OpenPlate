@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMealStore } from '../store/mealStore'
 import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
-import { uploadPhoto, compressImage } from '../lib/storage'
+import { uploadPhoto, compressImage, deletePhoto } from '../lib/storage'
 import { sumNutrients, getFoodUnits, calculateFoodNutrients } from '../lib/utils'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, MACRO_KEYS, EMPTY_NUTRIENTS } from '../types'
@@ -94,6 +94,10 @@ export default function MealFormPage() {
         const compressed = await compressImage(photoFile)
         const path = `meals/${Date.now()}_${compressed.name}`
         photoURL = await uploadPhoto(compressed, path)
+        // Delete old photo after new one is uploaded
+        if (existing?.photoURL) {
+          deletePhoto(existing.photoURL).catch(console.warn)
+        }
       }
 
       const mealData: Record<string, unknown> = {

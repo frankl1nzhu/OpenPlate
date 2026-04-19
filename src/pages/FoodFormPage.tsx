@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
-import { uploadPhoto, compressImage } from '../lib/storage'
+import { uploadPhoto, compressImage, deletePhoto } from '../lib/storage'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
 import type { Nutrients, FoodUnit } from '../types'
 import DeleteReasonDialog from '../components/DeleteReasonDialog'
@@ -113,6 +113,10 @@ export default function FoodFormPage() {
         const compressed = await compressImage(photoFile)
         const path = `foods/${Date.now()}_${compressed.name}`
         photoURL = await uploadPhoto(compressed, path)
+        // Delete old photo after new one is uploaded
+        if (existing?.photoURL) {
+          deletePhoto(existing.photoURL).catch(console.warn)
+        }
       }
 
       const finalNutrients: Nutrients = {
