@@ -75,7 +75,7 @@ export default function FoodFormPage() {
   }
 
   const visibleMacroKeys = MACRO_KEYS.filter(
-    (k) => k !== 'completeProtein' && k !== 'incompleteProtein',
+    (k) => k !== 'protein' && k !== 'completeProtein' && k !== 'incompleteProtein',
   )
 
   const addExtraUnit = () => {

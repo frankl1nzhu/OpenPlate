@@ -168,7 +168,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
 
   // Visible macro keys for quick-add (exclude protein fields, handled separately)
   const quickMacroKeys = MACRO_KEYS.filter(
-    (k) => k !== 'completeProtein' && k !== 'incompleteProtein',
+    (k) => k !== 'protein' && k !== 'completeProtein' && k !== 'incompleteProtein',
   )
 
   const previewCalories = Math.round(calculateNutrients().calories)
