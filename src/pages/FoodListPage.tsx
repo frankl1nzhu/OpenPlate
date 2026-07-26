@@ -1,24 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useFoodStore } from '../store/foodStore'
+import { useCategoryStore } from '../store/categoryStore'
 import { fetchUserProfiles } from '../store/userProfileStore'
 import { Link } from 'react-router-dom'
 import AIFoodModal from '../components/AIFoodModal'
 import AITaskBanner from '../components/AITaskBanner'
 import type { UserProfile } from '../types'
-import { DEFAULT_FOOD_CATEGORIES } from '../types'
-
 import { useAuthStore } from '../store/authStore'
-import { useToastStore } from '../store/toastStore'
 
 export default function FoodListPage() {
-  const { foods, loading, deleteCategoryTag } = useFoodStore()
+  const { foods, loading } = useFoodStore()
+  const { categories, addCategory, renameCategory, deleteCategory } = useCategoryStore()
   const isAdmin = useAuthStore((s) => s.isAdmin)
-  const addToast = useToastStore((s) => s.addToast)
   const [search, setSearch] = useState('')
   const [showAIModal, setShowAIModal] = useState(false)
   const [creatorProfiles, setCreatorProfiles] = useState<Record<string, UserProfile>>({})
   const [selectedCategory, setSelectedCategory] = useState<string>('全部')
   const [sortBy, setSortBy] = useState<'newest' | 'cal_asc' | 'cal_desc' | 'name'>('newest')
+  const [newCatInput, setNewCatInput] = useState('')
 
   useEffect(() => {
     if (foods.length === 0) return
@@ -26,16 +25,13 @@ export default function FoodListPage() {
     fetchUserProfiles(uids).then(setCreatorProfiles)
   }, [foods])
 
-  const allCategories = ['全部', ...new Set([
-    ...DEFAULT_FOOD_CATEGORIES,
-    ...foods.flatMap(f => f.categories || [])
-  ])]
+  const allCategories = ['全部', ...categories]
 
   const filtered = foods.filter((f) => {
     if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false
     if (selectedCategory !== '全部') {
       const cats = f.categories || []
-      if (!cats.includes(selectedCategory) && !(cats.length === 0 && selectedCategory === '其他')) {
+      if (!cats.includes(selectedCategory)) {
         return false
       }
     }
@@ -99,8 +95,8 @@ export default function FoodListPage() {
         {/* Categories Bar */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {allCategories.map((tag) => {
-            const isCustomTag = tag !== '全部' && !DEFAULT_FOOD_CATEGORIES.includes(tag)
             const isSelected = selectedCategory === tag
+            const canManage = isAdmin && tag !== '全部'
 
             return (
               <div
@@ -118,27 +114,69 @@ export default function FoodListPage() {
                 >
                   {tag}
                 </button>
-                {isAdmin && isCustomTag && (
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation()
-                      if (window.confirm(`确定彻底删除分类标签「${tag}」吗？`)) {
-                        await deleteCategoryTag(tag)
-                        if (selectedCategory === tag) setSelectedCategory('全部')
-                        addToast(`标签「${tag}」已删除`, { type: 'success' })
-                      }
-                    }}
-                    className="ml-0.5 hover:text-red-300 font-bold px-0.5 text-xs"
-                    title="管理员删除标签"
-                  >
-                    ×
-                  </button>
+                {canManage && (
+                  <div className="flex items-center gap-1 ml-0.5 border-l border-emerald-400/50 pl-1">
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        const newName = window.prompt(`修改分类名称「${tag}」为：`, tag)
+                        if (newName && newName.trim() && newName.trim() !== tag) {
+                          await renameCategory(tag, newName.trim())
+                          if (selectedCategory === tag) setSelectedCategory(newName.trim())
+                        }
+                      }}
+                      className="hover:text-emerald-200 text-[10px]"
+                      title="重命名分类"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        if (window.confirm(`确定彻底删除分类「${tag}」吗？此操作将移除该分类，并从所有相关食物中删除此标签。`)) {
+                          await deleteCategory(tag)
+                          if (selectedCategory === tag) setSelectedCategory('全部')
+                        }
+                      }}
+                      className="hover:text-red-300 font-bold text-xs"
+                      title="删除分类"
+                    >
+                      ×
+                    </button>
+                  </div>
                 )}
               </div>
             )
           })}
         </div>
+
+        {/* Admin Add Category Bar */}
+        {isAdmin && (
+          <div className="flex gap-2 pt-1">
+            <input
+              type="text"
+              value={newCatInput}
+              onChange={(e) => setNewCatInput(e.target.value)}
+              placeholder="新增食物分类标签（管理员）..."
+              className="flex-1 px-3 py-1 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                if (newCatInput.trim()) {
+                  await addCategory(newCatInput.trim())
+                  setNewCatInput('')
+                }
+              }}
+              disabled={!newCatInput.trim()}
+              className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+            >
+              + 新增分类
+            </button>
+          </div>
+        )}
       </div>
 
       {/* AI task status banner */}

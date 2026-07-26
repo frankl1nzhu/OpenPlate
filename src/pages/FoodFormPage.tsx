@@ -8,14 +8,14 @@ import type { Nutrients, FoodUnit, Food } from '../types'
 import DeleteReasonDialog from '../components/DeleteReasonDialog'
 import NumberInput from '../components/NumberInput'
 import UnitSelect from '../components/UnitSelect'
-import { DEFAULT_FOOD_CATEGORIES } from '../types'
-
+import { useCategoryStore } from '../store/categoryStore'
 import { useToastStore } from '../store/toastStore'
 
 export default function FoodFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { foods, addFood, updateFood, requestDelete, requestEdit } = useFoodStore()
+  const { categories, addCategory, renameCategory, deleteCategory } = useCategoryStore()
   const user = useAuthStore((s) => s.user)
   const isAdmin = useAuthStore((s) => s.isAdmin)
 
@@ -303,9 +303,8 @@ export default function FoodFormPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">分类标签</label>
           <div className="flex flex-wrap gap-2 mb-2">
-            {Array.from(new Set([...DEFAULT_FOOD_CATEGORIES, ...selectedCategories])).map((cat) => {
+            {Array.from(new Set([...categories, ...selectedCategories])).map((cat) => {
               const isSelected = selectedCategories.includes(cat)
-              const isCustom = !DEFAULT_FOOD_CATEGORIES.includes(cat)
               return (
                 <div
                   key={cat}
@@ -328,22 +327,40 @@ export default function FoodFormPage() {
                   >
                     {cat}
                   </button>
-                  {isAdmin && isCustom && (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        if (window.confirm(`确定彻底删除分类标签「${cat}」吗？`)) {
-                          await useFoodStore.getState().deleteCategoryTag(cat)
-                          setSelectedCategories(selectedCategories.filter(c => c !== cat))
-                          useToastStore.getState().addToast(`已删除标签「${cat}」`, { type: 'success' })
-                        }
-                      }}
-                      className="ml-1 hover:text-red-300 font-bold text-xs"
-                      title="删除标签"
-                    >
-                      ×
-                    </button>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 ml-1 border-l border-emerald-400/50 pl-1">
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          const newName = window.prompt(`修改分类名称「${cat}」为：`, cat)
+                          if (newName && newName.trim() && newName.trim() !== cat) {
+                            await renameCategory(cat, newName.trim())
+                            if (selectedCategories.includes(cat)) {
+                              setSelectedCategories(selectedCategories.map(c => c === cat ? newName.trim() : c))
+                            }
+                          }
+                        }}
+                        className="hover:text-emerald-200 text-xs"
+                        title="重命名分类"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          if (window.confirm(`确定彻底删除分类「${cat}」吗？此操作将移除该分类，并从所有食物中删除此标签。`)) {
+                            await deleteCategory(cat)
+                            setSelectedCategories(selectedCategories.filter(c => c !== cat))
+                          }
+                        }}
+                        className="hover:text-red-300 font-bold text-xs"
+                        title="删除分类"
+                      >
+                        ×
+                      </button>
+                    </div>
                   )}
                 </div>
               )
@@ -355,21 +372,25 @@ export default function FoodFormPage() {
                 type="text"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
-                placeholder="自定义标签（仅管理员可添加）..."
+                placeholder="新增食物分类标签（管理员）..."
                 className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <button
                 type="button"
-                onClick={() => {
-                  if (customCategory.trim() && !selectedCategories.includes(customCategory.trim())) {
-                    setSelectedCategories([...selectedCategories, customCategory.trim()])
+                onClick={async () => {
+                  if (customCategory.trim()) {
+                    const tag = customCategory.trim()
+                    await addCategory(tag)
+                    if (!selectedCategories.includes(tag)) {
+                      setSelectedCategories([...selectedCategories, tag])
+                    }
                     setCustomCategory('')
                   }
                 }}
                 disabled={!customCategory.trim()}
-                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-50"
+                className="px-3 py-1.5 bg-emerald-500 text-white font-medium rounded-lg text-sm disabled:opacity-50"
               >
-                + 添加标签
+                + 添加分类
               </button>
             </div>
           )}

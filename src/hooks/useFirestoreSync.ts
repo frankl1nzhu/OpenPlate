@@ -7,6 +7,7 @@ import { subscribeGoal, unsubscribeGoal } from '../store/goalStore'
 import { subscribeUserProfile, unsubscribeUserProfile } from '../store/userProfileStore'
 import { subscribeFitnessGoals, unsubscribeFitnessGoals } from '../store/fitnessGoalStore'
 import { subscribeAiTasks, unsubscribeAiTasks } from '../store/aiTaskStore'
+import { subscribeCategories, unsubscribeCategories } from '../store/categoryStore'
 
 export function useFirestoreSync() {
   const user = useAuthStore((s) => s.user)
@@ -21,6 +22,7 @@ export function useFirestoreSync() {
       unsubscribeUserProfile()
       unsubscribeFitnessGoals()
       unsubscribeAiTasks()
+      unsubscribeCategories()
       return
     }
 
@@ -30,6 +32,7 @@ export function useFirestoreSync() {
     subscribeUserProfile(user.uid)
     subscribeFitnessGoals(user.uid)
     subscribeAiTasks(user.uid)
+    subscribeCategories()
 
     return () => {
       unsubscribeFoods()
@@ -38,6 +41,7 @@ export function useFirestoreSync() {
       unsubscribeUserProfile()
       unsubscribeFitnessGoals()
       unsubscribeAiTasks()
+      unsubscribeCategories()
     }
   }, [user])
 
