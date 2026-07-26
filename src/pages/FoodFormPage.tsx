@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
-import { uploadPhoto, compressImage, deletePhoto } from '../lib/storage'
+import { uploadPhotoResumable, compressImage, deletePhoto } from '../lib/storage'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
 import type { Nutrients, FoodUnit } from '../types'
 import DeleteReasonDialog from '../components/DeleteReasonDialog'
@@ -34,6 +34,7 @@ export default function FoodFormPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [showMicro, setShowMicro] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [simpleMode, setSimpleMode] = useState(true)
@@ -55,7 +56,6 @@ export default function FoodFormPage() {
         : existing.nutrientsPerUnit.incompleteProtein)
       setNutrients({ ...existing.nutrientsPerUnit })
       if (existing.photoURL) setPhotoPreview(existing.photoURL)
-      // @ts-ignore categories might not be strictly typed yet, but we will save it
       if (existing.categories) setSelectedCategories(existing.categories)
       const hasMicro = MICRO_KEYS.some((k) => (existing.nutrientsPerUnit[k] || 0) > 0)
       if (hasMicro) setShowMicro(true)
@@ -135,7 +135,7 @@ export default function FoodFormPage() {
       if (photoFile) {
         const compressed = await compressImage(photoFile)
         const path = `foods/${Date.now()}_${compressed.name}`
-        photoURL = await uploadPhoto(compressed, path)
+        photoURL = await uploadPhotoResumable(compressed, path, setUploadProgress)
         // Delete old photo after new one is uploaded
         if (existing?.photoURL) {
           deletePhoto(existing.photoURL).catch(console.warn)
@@ -449,6 +449,21 @@ export default function FoodFormPage() {
         )}
 
         {/* Submit */}
+        {uploadProgress > 0 && uploadProgress < 100 && (
+          <div className="space-y-1 mt-4">
+            <div className="flex justify-between text-xs text-emerald-600 font-medium">
+              <span>上传中...</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <div className="h-2 bg-emerald-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-emerald-500 transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={submitting}

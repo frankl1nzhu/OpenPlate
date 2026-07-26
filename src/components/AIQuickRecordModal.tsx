@@ -51,7 +51,7 @@ export default function AIQuickRecordModal({ onClose }: Props) {
       // Capture selectedDate so the entry lands on the right day even if confirmed later
       await startQuickTask(user.uid, photoFile, getFCMToken(), description || undefined, selectedDate, (p) => setUploadProgress(p))
       onClose()
-    } catch (err) {
+    } catch {
       setError('启动失败，请重试')
       setStarting(false)
     }

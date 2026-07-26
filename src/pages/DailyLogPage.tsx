@@ -448,7 +448,7 @@ export default function DailyLogPage() {
       )}
 
       {showCopyModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white w-full max-w-sm rounded-2xl p-4 space-y-3">
             <h3 className="font-bold text-gray-800 text-sm">复制 {selectedDate} 的记录</h3>
             <p className="text-xs text-gray-500">将当前日期的全部饮食和运动记录批量复制到目标日期：</p>

@@ -23,14 +23,12 @@ export default function FoodListPage() {
 
   const allCategories = ['全部', ...new Set([
     ...DEFAULT_FOOD_CATEGORIES,
-    // @ts-ignore
     ...foods.flatMap(f => f.categories || [])
   ])]
 
   const filtered = foods.filter((f) => {
     if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false
     if (selectedCategory !== '全部') {
-      // @ts-ignore
       const cats = f.categories || []
       if (!cats.includes(selectedCategory) && !(cats.length === 0 && selectedCategory === '其他')) {
         return false
@@ -83,7 +81,7 @@ export default function FoodListPage() {
           />
           <select 
             value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as 'newest' | 'cal_asc' | 'cal_desc' | 'name')}
             className="px-2 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="newest">最近添加</option>

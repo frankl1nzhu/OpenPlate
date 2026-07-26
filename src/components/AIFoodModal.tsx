@@ -49,7 +49,7 @@ export default function AIFoodModal({ onClose }: Props) {
       // Start background task and close immediately
       await startFoodTask(user.uid, photoFile, getFCMToken(), description || undefined, (p) => setUploadProgress(p))
       onClose()
-    } catch (err) {
+    } catch {
       setError('启动失败，请重试')
       setStarting(false)
     }
