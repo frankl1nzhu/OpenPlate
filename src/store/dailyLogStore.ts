@@ -12,8 +12,10 @@ import { formatDate } from '../lib/utils'
 interface DailyLogState {
   currentLog: DailyLog | null
   selectedDate: string
+  recentFoodIds: string[]
   loading: boolean
   setSelectedDate: (date: string) => void
+  addRecentFood: (foodId: string) => void
   addEntry: (userId: string, entry: Omit<LogEntry, 'id'>, date?: string) => Promise<void>
   addEntries: (userId: string, entries: Omit<LogEntry, 'id'>[], date?: string) => Promise<void>
   removeEntry: (userId: string, entryId: string) => Promise<void>
@@ -28,10 +30,18 @@ export const useDailyLogStore = create<DailyLogState>()(
     (set, get) => ({
       currentLog: null,
       selectedDate: formatDate(new Date()),
+      recentFoodIds: [],
       loading: true,
 
       setSelectedDate: (date) => {
         set({ selectedDate: date, currentLog: null, loading: true })
+      },
+
+      addRecentFood: (foodId) => {
+        set((state) => {
+          const ids = [foodId, ...state.recentFoodIds.filter((id) => id !== foodId)].slice(0, 20)
+          return { recentFoodIds: ids }
+        })
       },
 
       addEntry: async (userId, entry, explicitDate) => {
@@ -55,6 +65,9 @@ export const useDailyLogStore = create<DailyLogState>()(
         const current = get().currentLog
         const entries = [...(current?.entries ?? []), newEntry]
         set({ currentLog: { id: docId, userId, date, entries, exercises: current?.exercises ?? [] }, loading: false })
+        if (entry.type === 'food') {
+          get().addRecentFood(entry.refId)
+        }
       },
 
       addEntries: async (userId, entriesToAdd, explicitDate) => {
@@ -78,6 +91,11 @@ export const useDailyLogStore = create<DailyLogState>()(
         const current = get().currentLog
         const entries = [...(current?.entries ?? []), ...newEntries]
         set({ currentLog: { id: docId, userId, date, entries, exercises: current?.exercises ?? [] }, loading: false })
+        entriesToAdd.forEach((entry) => {
+          if (entry.type === 'food') {
+            get().addRecentFood(entry.refId)
+          }
+        })
       },
 
       removeEntry: async (userId, entryId) => {
@@ -149,7 +167,7 @@ export const useDailyLogStore = create<DailyLogState>()(
     }),
     {
       name: 'openplate-dailylog',
-      partialize: () => ({}),
+      partialize: (state) => ({ recentFoodIds: state.recentFoodIds }),
     },
   ),
 )

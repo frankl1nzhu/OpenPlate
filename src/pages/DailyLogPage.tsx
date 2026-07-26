@@ -5,6 +5,7 @@ import { useMealStore } from '../store/mealStore'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
 import { useFitnessGoalStore } from '../store/fitnessGoalStore'
+import { useToastStore } from '../store/toastStore'
 import { sumNutrients } from '../lib/utils'
 import { adjustTargetsForExercise } from '../lib/nutrition'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
@@ -25,11 +26,71 @@ export default function DailyLogPage() {
   const [showAIQuickModal, setShowAIQuickModal] = useState(false)
   const dateInputRef = useRef<HTMLInputElement>(null)
 
-  const entries = currentLog?.entries ?? []
-  const exercises = currentLog?.exercises ?? []
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set())
+  const addToast = useToastStore((s) => s.addToast)
+
+  const handleDeleteEntry = (entryId: string, entryName: string) => {
+    if (!user) return
+    setPendingDeletes(prev => new Set(prev).add(entryId))
+    
+    const timerId = setTimeout(() => {
+      removeEntry(user.uid, entryId)
+      setPendingDeletes(prev => {
+        const next = new Set(prev)
+        next.delete(entryId)
+        return next
+      })
+    }, 6500)
+    
+    addToast(`已删除「${entryName}」`, {
+      type: 'info',
+      duration: 6000,
+      actionLabel: '撤销',
+      action: () => {
+        clearTimeout(timerId)
+        setPendingDeletes(prev => {
+          const next = new Set(prev)
+          next.delete(entryId)
+          return next
+        })
+      },
+    })
+  }
+
+  const handleDeleteExercise = (exerciseId: string, exerciseName: string) => {
+    if (!user) return
+    setPendingDeletes(prev => new Set(prev).add(exerciseId))
+    
+    const timerId = setTimeout(() => {
+      removeExercise(user.uid, exerciseId)
+      setPendingDeletes(prev => {
+        const next = new Set(prev)
+        next.delete(exerciseId)
+        return next
+      })
+    }, 6500)
+    
+    addToast(`已删除「${exerciseName}」`, {
+      type: 'info',
+      duration: 6000,
+      actionLabel: '撤销',
+      action: () => {
+        clearTimeout(timerId)
+        setPendingDeletes(prev => {
+          const next = new Set(prev)
+          next.delete(exerciseId)
+          return next
+        })
+      },
+    })
+  }
+
+  const allEntries = currentLog?.entries ?? []
+  const allExercises = currentLog?.exercises ?? []
+  const entries = allEntries.filter(e => !pendingDeletes.has(e.id))
+  const exercises = allExercises.filter(e => !pendingDeletes.has(e.id))
 
   const mealGroups = entries.reduce<{ mealIndex: number; entries: LogEntry[] }[]>((groups, entry, index) => {
-    // Old records did not have mealIndex; preserve them as individual meals.
     const mealIndex = entry.mealIndex ?? index + 1
     const group = groups.find((item) => item.mealIndex === mealIndex)
     if (group) group.entries.push(entry)
@@ -298,7 +359,7 @@ export default function DailyLogPage() {
                       <div key={entry.id} className="flex items-center gap-3 p-3 border-b border-gray-50 last:border-b-0">
                         {photo ? <img src={photo} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" /> : <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm shrink-0 ${getEntryIconClass(entry.type)}`}>{getEntryIconChar(entry)}</div>}
                         <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{getEntryName(entry)}</div><div className="text-xs text-gray-400">{entry.quantity} {getEntryUnit(entry)} · {Math.round(entry.nutrients.calories)} kcal</div></div>
-                        <button onClick={() => user && removeEntry(user.uid, entry.id)} className="text-gray-300 p-1 shrink-0" aria-label={`删除${getEntryName(entry)}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        <button onClick={() => handleDeleteEntry(entry.id, getEntryName(entry))} className="text-gray-300 p-1 shrink-0" aria-label={`删除${getEntryName(entry)}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
                       </div>
                     )
                   })}
@@ -336,7 +397,7 @@ export default function DailyLogPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => user && removeExercise(user.uid, ex.id)}
+                  onClick={() => handleDeleteExercise(ex.id, EXERCISE_TYPE_LABELS[ex.exerciseType])}
                   className="text-gray-300 p-1 shrink-0"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

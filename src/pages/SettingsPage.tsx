@@ -64,6 +64,8 @@ export default function SettingsPage() {
   const [exportEnd, setExportEnd] = useState('')
   const [exporting, setExporting] = useState(false)
 
+  const [activeTab, setActiveTab] = useState<'profile' | 'goals' | 'fitness' | 'data'>('profile')
+
   useEffect(() => {
     if (goal?.targets) {
       const t = { ...EMPTY_NUTRIENTS, ...goal.targets }
@@ -329,12 +331,35 @@ export default function SettingsPage() {
 
   return (
     <div className="pb-20 px-4 py-4">
-      <div className="text-center mb-6">
-        <div className="text-sm text-gray-500">{user?.email}</div>
+      <div className="text-center mb-4">
+        <div className="text-sm text-gray-500 mb-3">{user?.email}</div>
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          {[
+            { key: 'profile' as const, label: '个人资料' },
+            { key: 'goals' as const, label: '营养目标' },
+            { key: 'fitness' as const, label: '健身目标' },
+            { key: 'data' as const, label: '数据管理' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-white text-emerald-600 shadow-sm'
+                  : 'text-gray-500'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Nickname */}
-      <div className="mb-6 pb-4 border-b border-gray-200">
+      {activeTab === 'profile' && (
+        <>
+          {/* Nickname */}
+          <div className="mb-6 pb-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-bold text-gray-700">昵称</h3>
           {!editingNickname && profile?.nickname && (
@@ -500,8 +525,12 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+        </>
+      )}
 
-      {/* Daily Goals - display/edit mode */}
+      {activeTab === 'goals' && (
+        <>
+          {/* Daily Goals - display/edit mode */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-700">每日目标摄入</h3>
@@ -748,9 +777,13 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+        </>
+      )}
 
-      {/* Fitness goals */}
-      <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
+      {activeTab === 'fitness' && (
+        <>
+          {/* Fitness goals */}
+          <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-700">健身目标</h3>
           <button
@@ -858,9 +891,13 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+        </>
+      )}
 
-      {/* Export */}
-      <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
+      {activeTab === 'data' && (
+        <>
+          {/* Export */}
+          <div className="space-y-3">
         <h3 className="text-sm font-bold text-gray-700">导出数据</h3>
         <div className="space-y-2">
           <div>
@@ -903,6 +940,8 @@ export default function SettingsPage() {
       <div className="mt-6 pb-2 text-center">
         <span className="text-xs text-gray-300">v{__APP_VERSION__}</span>
       </div>
+        </>
+      )}
     </div>
   )
 }

@@ -5,9 +5,11 @@ import {
   sendEmailVerification,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   type User,
 } from 'firebase/auth'
 import { auth } from '../lib/firebase'
+import { getFirebaseErrorMessage } from '../lib/firebaseErrors'
 
 interface AuthState {
   user: User | null
@@ -17,6 +19,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<void>
   clearError: () => void
 }
 
@@ -31,8 +34,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await signInWithEmailAndPassword(auth, email, password)
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '登录失败'
-      set({ error: msg })
+      set({ error: getFirebaseErrorMessage(e) })
       throw e
     }
   },
@@ -43,14 +45,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       const result = await createUserWithEmailAndPassword(auth, email, password)
       await sendEmailVerification(result.user)
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '注册失败'
-      set({ error: msg })
+      set({ error: getFirebaseErrorMessage(e) })
       throw e
     }
   },
 
   signOut: async () => {
     await firebaseSignOut(auth)
+  },
+
+  resetPassword: async (email) => {
+    await sendPasswordResetEmail(auth, email)
   },
 
   clearError: () => set({ error: null }),

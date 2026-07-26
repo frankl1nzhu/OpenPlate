@@ -34,7 +34,10 @@ export default function VerifyEmailPage() {
     }
   }
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    if (auth.currentUser) {
+      await auth.currentUser.reload()
+    }
     window.location.reload()
   }
 

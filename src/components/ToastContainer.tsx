@@ -11,7 +11,7 @@ export default function ToastContainer() {
         <div
           key={toast.id}
           onClick={() => removeToast(toast.id)}
-          className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium cursor-pointer animate-slide-down ${
+          className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium cursor-pointer animate-slide-down flex justify-between items-center ${
             toast.type === 'success'
               ? 'bg-emerald-500 text-white'
               : toast.type === 'error'
@@ -19,7 +19,19 @@ export default function ToastContainer() {
               : 'bg-blue-500 text-white'
           }`}
         >
-          {toast.message}
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                toast.action?.()
+                removeToast(toast.id)
+              }}
+              className="ml-4 font-bold underline shrink-0 hover:opacity-80"
+            >
+              {toast.actionLabel || 'Action'}
+            </button>
+          )}
         </div>
       ))}
     </div>

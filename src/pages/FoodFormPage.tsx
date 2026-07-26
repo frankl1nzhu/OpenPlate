@@ -32,6 +32,7 @@ export default function FoodFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [showMicro, setShowMicro] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [simpleMode, setSimpleMode] = useState(true)
 
   useEffect(() => {
     if (existing && !canEdit) {
@@ -52,6 +53,7 @@ export default function FoodFormPage() {
       if (existing.photoURL) setPhotoPreview(existing.photoURL)
       const hasMicro = MICRO_KEYS.some((k) => (existing.nutrientsPerUnit[k] || 0) > 0)
       if (hasMicro) setShowMicro(true)
+      setSimpleMode(!hasMicro)
       // Load extra units (exclude base unit)
       if (existing.units) {
         const extras = existing.units.filter((u) => u.name !== existing.unit)
@@ -75,9 +77,13 @@ export default function FoodFormPage() {
     setNutrients((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }))
   }
 
-  const visibleMacroKeys = MACRO_KEYS.filter(
-    (k) => k !== 'protein' && k !== 'completeProtein' && k !== 'incompleteProtein',
-  )
+  const visibleMacroKeys = MACRO_KEYS.filter((k) => {
+    if (k === 'protein' || k === 'completeProtein' || k === 'incompleteProtein') return false
+    if (simpleMode) {
+      return ['calories', 'carbs', 'fat', 'fiber', 'sodium'].includes(k)
+    }
+    return true
+  })
 
   const addExtraUnit = () => {
     setExtraUnits([...extraUnits, { name: '', grams: 0 }])
@@ -292,9 +298,18 @@ export default function FoodFormPage() {
 
         {/* Macro nutrients */}
         <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            每 {baseAmount}{baseUnit} 营养素
-          </h3>
+          <div className="flex items-center justify-between py-2 mb-2">
+            <span className="text-sm font-medium text-gray-700">
+              每 {baseAmount}{baseUnit} 营养素
+            </span>
+            <button
+              type="button"
+              onClick={() => setSimpleMode(!simpleMode)}
+              className="text-xs px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50"
+            >
+              {simpleMode ? '切换到详细模式' : '切换到简化模式'}
+            </button>
+          </div>
           <div className="space-y-2">
             {visibleMacroKeys.map((key) => (
               <div key={key} className="flex items-center gap-2">
@@ -341,41 +356,43 @@ export default function FoodFormPage() {
         </div>
 
         {/* Micronutrients */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowMicro(!showMicro)}
-            className="flex items-center gap-1 text-sm font-medium text-gray-700"
-          >
-            微量元素
-            <svg
-              className={`w-4 h-4 transition-transform ${showMicro ? 'rotate-180' : ''}`}
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        {!simpleMode && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowMicro(!showMicro)}
+              className="flex items-center gap-1 text-sm font-medium text-gray-700"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+              微量元素
+              <svg
+                className={`w-4 h-4 transition-transform ${showMicro ? 'rotate-180' : ''}`}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-          {showMicro && (
-            <div className="space-y-2 mt-2">
-              {MICRO_KEYS.map((key) => (
-                <div key={key} className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 w-24 shrink-0">
-                    {NUTRIENT_LABELS[key]}
-                  </label>
-                  <NumberInput
-                    value={nutrients[key]}
-                    onValueChange={(value) => handleNutrient(key, String(value))}
-                    min={0}
-                    step="any"
-                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+            {showMicro && (
+              <div className="space-y-2 mt-2">
+                {MICRO_KEYS.map((key) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 w-24 shrink-0">
+                      {NUTRIENT_LABELS[key]}
+                    </label>
+                    <NumberInput
+                      value={nutrients[key]}
+                      onValueChange={(value) => handleNutrient(key, String(value))}
+                      min={0}
+                      step="any"
+                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Submit */}
         <button

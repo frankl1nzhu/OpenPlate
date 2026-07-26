@@ -4,13 +4,14 @@ import { useMealStore } from '../store/mealStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useAuthStore } from '../store/authStore'
 import { useUserProfileStore } from '../store/userProfileStore'
+import { useToastStore } from '../store/toastStore'
 import { multiplyNutrients, sumNutrients, getFoodUnits, calculateFoodNutrients } from '../lib/utils'
 import { calculateExerciseCalories } from '../lib/nutrition'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { useScrollLock } from '../hooks/useScrollLock'
 import NumberInput from './NumberInput'
 import { EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS, EXERCISE_TYPE_LABELS, EXERCISE_INTENSITY_LABELS } from '../types'
-import type { Nutrients, ExerciseType, ExerciseIntensity } from '../types'
+import type { Nutrients, ExerciseType, ExerciseIntensity, Food } from '../types'
 
 interface Props {
   onClose: () => void
@@ -34,10 +35,14 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
   useScrollLock(true)
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
-  const { currentLog, addEntries, addExercise } = useDailyLogStore()
+  const { currentLog, addEntries, addExercise, recentFoodIds } = useDailyLogStore()
   const user = useAuthStore((s) => s.user)
   const { profile } = useUserProfileStore()
   const isExerciseMode = defaultTab === 'exercise'
+
+  const recentFoods = recentFoodIds
+    .map(id => foods.find(f => f.id === id))
+    .filter((f): f is Food => f !== undefined)
 
   const [tab, setTab] = useState<DietTab | 'exercise'>(isExerciseMode ? 'exercise' : 'food')
   const [search, setSearch] = useState('')
@@ -111,6 +116,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
     if (!quickName.trim()) return
     const nutrients: Nutrients = {
       ...quickNutrients,
+      protein: quickProtein,
       completeProtein: quickIsComplete ? quickProtein : 0,
       incompleteProtein: quickIsComplete ? 0 : quickProtein,
     }
@@ -143,7 +149,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
             const compressed = await compressImage(draft.photoFile)
             photoURL = await uploadPhoto(compressed, `quick-records/${timestamp}_${index}.jpg`)
           } catch {
-            // A photo is optional; keep the record even if its upload fails.
+            useToastStore.getState().addToast('图片上传失败，记录将不包含照片', { type: 'error' })
             photoURL = undefined
           }
         }
@@ -160,6 +166,12 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
         }
       }))
       await addEntries(user.uid, entries)
+      // Track recent foods
+      for (const draft of drafts) {
+        if (draft.type === 'food' && draft.refId) {
+          useDailyLogStore.getState().addRecentFood(draft.refId)
+        }
+      }
       onClose()
     } catch (error) {
       console.error(error)
@@ -219,10 +231,33 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
                   <button type="button" onClick={addQuickDraft} disabled={!quickName.trim()} className="w-full py-2 border border-blue-500 text-blue-600 rounded-lg text-sm font-medium disabled:opacity-50">+ 加入本顿</button></div>
               ) : (
                 <><input type="text" placeholder={tab === 'food' ? '搜索食物...' : '搜索套餐...'} value={search} onChange={(event) => setSearch(event.target.value)} className="w-full px-3 py-2 mb-2 bg-gray-100 rounded-lg text-sm focus:outline-none" />
+                  {tab === 'food' && !search && recentFoods.length > 0 && (
+                    <div className="mb-3">
+                      <div className="text-xs font-medium text-gray-500 mb-2">🕔 最近使用</div>
+                      {recentFoods.map(item => {
+                        const selected = drafts.some(draft => draft.type === 'food' && draft.refId === item.id)
+                        return (
+                          <button key={`recent-${item.id}`} type="button" onClick={() => addOrRemoveReference('food', item.id)}
+                            className={`w-full text-left flex items-center gap-3 py-2.5 border-b border-gray-50 ${selected ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''}`}>
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm bg-emerald-100 text-emerald-600">
+                              {item.photoURL ? <img src={item.photoURL} alt="" className="w-full h-full rounded-lg object-cover" /> : item.name[0]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{item.name}</div>
+                              <div className="text-xs text-gray-400">每{item.defaultQuantity}{item.unit}</div>
+                            </div>
+                            <span className={`text-lg ${selected ? 'text-emerald-500' : 'text-gray-300'}`}>{selected ? '✓' : '+'}</span>
+                          </button>
+                        )
+                      })}
+                      <div className="border-b border-gray-200 my-2" />
+                    </div>
+                  )}
                   {tab === 'food' ? filteredFoods.map((item) => { const selected = drafts.some((draft) => draft.type === 'food' && draft.refId === item.id); return <button key={item.id} type="button" onClick={() => addOrRemoveReference('food', item.id)} className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${selected ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''}`}><div className="w-10 h-10 rounded-lg flex items-center justify-center text-sm bg-emerald-100 text-emerald-600">{item.photoURL ? <img src={item.photoURL} alt="" className="w-full h-full rounded-lg object-cover" /> : item.name[0]}</div><div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{item.name}</div><div className="text-xs text-gray-400">每{item.defaultQuantity}{item.unit}</div></div><span className={`text-lg ${selected ? 'text-emerald-500' : 'text-gray-300'}`}>{selected ? '✓' : '+'}</span></button> }) : filteredMeals.map((item) => { const selected = drafts.some((draft) => draft.type === 'meal' && draft.refId === item.id); return <button key={item.id} type="button" onClick={() => addOrRemoveReference('meal', item.id)} className={`w-full text-left flex items-center gap-3 py-3 border-b border-gray-50 ${selected ? 'bg-emerald-50 -mx-2 px-2 rounded-lg' : ''}`}><div className="w-10 h-10 rounded-lg flex items-center justify-center text-sm bg-orange-100 text-orange-600">{item.photoURL ? <img src={item.photoURL} alt="" className="w-full h-full rounded-lg object-cover" /> : item.name[0]}</div><div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{item.name}</div><div className="text-xs text-gray-400">{item.foods.length} 种食物</div></div><span className={`text-lg ${selected ? 'text-emerald-500' : 'text-gray-300'}`}>{selected ? '✓' : '+'}</span></button> })}</>
               )}
             </div>
             <div className="px-4 py-3 border-t border-gray-100 shrink-0 max-h-56 overflow-y-auto">
+
               <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium text-gray-700">本顿已选 {drafts.length} 项</span><span className="text-xs text-emerald-600">{Math.round(sumNutrients(...drafts.map(calculateDraftNutrients)).calories)} kcal</span></div>
               {drafts.length > 0 && <div className="space-y-2 mb-3">{drafts.map((draft) => { const food = draft.type === 'food' ? foods.find((item) => item.id === draft.refId) : undefined; const units = food ? getFoodUnits(food) : []; return <div key={draft.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1.5"><span className="text-sm flex-1 truncate">{draft.name}</span>{draft.type !== 'quick' && <><NumberInput value={draft.quantity} onValueChange={(quantity) => updateDraft(draft.id, { quantity })} min={0} step="any" className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center" />{draft.type === 'food' && units.length > 1 ? <select value={draft.unit} onChange={(event) => updateDraft(draft.id, { unit: event.target.value, quantity: 1 })} className="max-w-20 px-1 py-1 border border-gray-300 rounded text-sm bg-white">{units.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select> : <span className="text-xs text-gray-400">{draft.type === 'food' ? draft.unit : '份'}</span>}</>}<button type="button" onClick={() => setDrafts((current) => current.filter((item) => item.id !== draft.id))} className="text-gray-400 p-1">×</button></div> })}</div>}
               <button onClick={handleAddMeal} disabled={submitting || drafts.length === 0} className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50">{submitting ? '添加中...' : `确认添加第 ${(currentLog?.entries ?? []).reduce((max, entry, index) => Math.max(max, entry.mealIndex ?? index + 1), 0) + 1} 顿`}</button>

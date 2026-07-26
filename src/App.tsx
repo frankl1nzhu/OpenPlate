@@ -1,24 +1,32 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { useFirestoreSync } from './hooks/useFirestoreSync'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import DailyLogPage from './pages/DailyLogPage'
-import FoodListPage from './pages/FoodListPage'
-import FoodFormPage from './pages/FoodFormPage'
-import MealListPage from './pages/MealListPage'
-import MealFormPage from './pages/MealFormPage'
-import SettingsPage from './pages/SettingsPage'
-import AdminPage from './pages/AdminPage'
-import VerifyEmailPage from './pages/VerifyEmailPage'
 import BottomNav from './components/BottomNav'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineIndicator from './components/OfflineIndicator'
 import ToastContainer from './components/ToastContainer'
 import ErrorBoundary from './components/ErrorBoundary'
-import type { ReactNode } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
 import { useFCM } from './hooks/useFCM'
+
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'))
+const DailyLogPage = lazy(() => import('./pages/DailyLogPage'))
+const FoodListPage = lazy(() => import('./pages/FoodListPage'))
+const FoodFormPage = lazy(() => import('./pages/FoodFormPage'))
+const MealListPage = lazy(() => import('./pages/MealListPage'))
+const MealFormPage = lazy(() => import('./pages/MealFormPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+
+const PageLoading = () => (
+  <div className="flex items-center justify-center py-20">
+    <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+  </div>
+)
 
 function AuthGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -53,15 +61,18 @@ function AppShell() {
         <h1 className="text-lg font-bold text-emerald-600 text-center">OpenPlate</h1>
       </header>
       <ErrorBoundary>
-        <Routes>
-          <Route path="/" element={<DailyLogPage />} />
-          <Route path="/foods" element={<FoodListPage />} />
-          <Route path="/foods/:id" element={<FoodFormPage />} />
-          <Route path="/meals" element={<MealListPage />} />
-          <Route path="/meals/:id" element={<MealFormPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-        </Routes>
+        <Suspense fallback={<PageLoading />}>
+          <Routes>
+            <Route path="/" element={<DailyLogPage />} />
+            <Route path="/foods" element={<FoodListPage />} />
+            <Route path="/foods/:id" element={<FoodFormPage />} />
+            <Route path="/meals" element={<MealListPage />} />
+            <Route path="/meals/:id" element={<MealFormPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </ErrorBoundary>
       <BottomNav />
     </div>
@@ -74,19 +85,21 @@ function App() {
       <ScrollToTop />
       <OfflineIndicator />
       <ToastContainer />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route
-          path="/*"
-          element={
-            <AuthGuard>
-              <AppShell />
-            </AuthGuard>
-          }
-        />
-      </Routes>
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route
+            path="/*"
+            element={
+              <AuthGuard>
+                <AppShell />
+              </AuthGuard>
+            }
+          />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

@@ -263,6 +263,7 @@ export interface UserProfile {
 export type ExerciseType = 'running' | 'walking' | 'cycling' | 'swimming' | 'weight_training' | 'yoga' | 'hiit' | 'other'
 export type ExerciseIntensity = 'low' | 'moderate' | 'high'
 
+
 export interface ExerciseEntry {
   id: string
   exerciseType: ExerciseType
