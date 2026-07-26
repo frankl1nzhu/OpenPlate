@@ -4,23 +4,25 @@ import { useFoodStore } from '../store/foodStore'
 import { useAuthStore } from '../store/authStore'
 import { uploadPhotoResumable, compressImage, deletePhoto } from '../lib/storage'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
-import type { Nutrients, FoodUnit } from '../types'
+import type { Nutrients, FoodUnit, Food } from '../types'
 import DeleteReasonDialog from '../components/DeleteReasonDialog'
 import NumberInput from '../components/NumberInput'
 import UnitSelect from '../components/UnitSelect'
 import { DEFAULT_FOOD_CATEGORIES } from '../types'
 
+import { useToastStore } from '../store/toastStore'
+
 export default function FoodFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { foods, addFood, updateFood, requestDelete } = useFoodStore()
+  const { foods, addFood, updateFood, requestDelete, requestEdit } = useFoodStore()
   const user = useAuthStore((s) => s.user)
   const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const existing = id && id !== 'new' ? foods.find((f) => f.id === id) : null
 
-  // Only the food creator or admin can edit an existing food
-  const canEdit = !existing || existing.createdBy === user?.uid || isAdmin
+  // Admin or creator can edit directly; others submit an edit request for admin approval
+  const canDirectEdit = !existing || existing.createdBy === user?.uid || isAdmin
 
   const [name, setName] = useState('')
   const [baseUnit, setBaseUnit] = useState('g')
@@ -38,12 +40,6 @@ export default function FoodFormPage() {
   const [showMicro, setShowMicro] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [simpleMode, setSimpleMode] = useState(true)
-
-  useEffect(() => {
-    if (existing && !canEdit) {
-      navigate('/foods', { replace: true })
-    }
-  }, [existing, canEdit, navigate])
 
   useEffect(() => {
     if (existing) {
@@ -163,16 +159,21 @@ export default function FoodFormPage() {
         foodData.photoURL = photoURL
       }
 
-      if (existing) {
-        await updateFood(existing.id, foodData as Partial<typeof existing>)
+      if (existing && !canDirectEdit) {
+        await requestEdit(existing.id, name, user.uid, foodData as Partial<Food>)
+        useToastStore.getState().addToast('编辑请求已提交，等待管理员审核', { type: 'info' })
+      } else if (existing) {
+        await updateFood(existing.id, foodData as Partial<Food>)
+        useToastStore.getState().addToast('食物信息已更新', { type: 'success' })
       } else {
-        await addFood(foodData as Omit<typeof existing & { id: string }, 'id'>)
+        await addFood(foodData as Omit<Food, 'id'>)
+        useToastStore.getState().addToast('已添加新食物', { type: 'success' })
       }
 
       navigate('/foods')
     } catch (err) {
       console.error(err)
-      alert('保存失败')
+      useToastStore.getState().addToast('保存失败，请稍后重试', { type: 'error' })
     } finally {
       setSubmitting(false)
     }
@@ -326,28 +327,30 @@ export default function FoodFormPage() {
               )
             })}
           </div>
-          <div className="flex gap-2 mt-2">
-            <input
-              type="text"
-              value={customCategory}
-              onChange={(e) => setCustomCategory(e.target.value)}
-              placeholder="自定义标签..."
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (customCategory.trim() && !selectedCategories.includes(customCategory.trim())) {
-                  setSelectedCategories([...selectedCategories, customCategory.trim()])
-                  setCustomCategory('')
-                }
-              }}
-              disabled={!customCategory.trim()}
-              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-50"
-            >
-              + 添加
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex gap-2 mt-2">
+              <input
+                type="text"
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                placeholder="自定义标签（仅管理员可添加）..."
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (customCategory.trim() && !selectedCategories.includes(customCategory.trim())) {
+                    setSelectedCategories([...selectedCategories, customCategory.trim()])
+                    setCustomCategory('')
+                  }
+                }}
+                disabled={!customCategory.trim()}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-50"
+              >
+                + 添加标签
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Macro nutrients */}

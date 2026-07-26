@@ -3,10 +3,12 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
+import { useFitnessGoalStore } from '../store/fitnessGoalStore'
 import { useScrollLock } from '../hooks/useScrollLock'
-import type { DailyLog } from '../types'
+import type { DailyLog, Nutrients } from '../types'
 import { EMPTY_NUTRIENTS } from '../types'
 import { sumNutrients, formatDate } from '../lib/utils'
+import { adjustTargetsForExercise } from '../lib/nutrition'
 
 interface Props {
   onClose: () => void
@@ -18,6 +20,7 @@ export default function NutritionReportModal({ onClose }: Props) {
   useScrollLock(true)
   const user = useAuthStore((s) => s.user)
   const goal = useGoalStore((s) => s.goal)
+  const fitnessGoals = useFitnessGoalStore((s) => s.goals)
   const [period, setPeriod] = useState<Period>('7days')
   const [loading, setLoading] = useState(true)
   const [logs, setLogs] = useState<DailyLog[]>([])
@@ -58,9 +61,39 @@ export default function NutritionReportModal({ onClose }: Props) {
   }, [user, period])
 
   const daysCount = period === '7days' ? 7 : 30
-  const targets = goal?.targets ?? EMPTY_NUTRIENTS
+  const baseTargets = goal?.targets ?? EMPTY_NUTRIENTS
 
-  // Average calculation
+  // Calculate per-day dynamic targets across the period
+  const today = new Date()
+  const dailyTargetsList: Nutrients[] = []
+
+  for (let i = daysCount - 1; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    const dateStr = formatDate(d)
+
+    const log = logs.find((l) => l.date === dateStr)
+    const exCalories = log?.exercises?.reduce((sum, ex) => sum + (ex.caloriesBurned || 0), 0) ?? 0
+
+    const activeFg = fitnessGoals.find((fg) => fg.startDate <= dateStr && fg.endDate >= dateStr)
+    const fgAdj = activeFg ? activeFg.calorieAdjustment : 0
+
+    const dayTarget = adjustTargetsForExercise(baseTargets, exCalories, fgAdj)
+    dailyTargetsList.push(dayTarget)
+  }
+
+  // Average Targets for period
+  const avgTargets: Nutrients = {
+    ...baseTargets,
+    calories: Math.round(dailyTargetsList.reduce((sum, t) => sum + t.calories, 0) / daysCount),
+    carbs: Math.round(dailyTargetsList.reduce((sum, t) => sum + t.carbs, 0) / daysCount),
+    protein: Math.round(dailyTargetsList.reduce((sum, t) => sum + (t.protein || t.completeProtein + t.incompleteProtein), 0) / daysCount),
+    fat: Math.round(dailyTargetsList.reduce((sum, t) => sum + t.fat, 0) / daysCount),
+    sodium: Math.round(dailyTargetsList.reduce((sum, t) => sum + (t.sodium || 2000), 0) / daysCount),
+    fiber: Math.round(dailyTargetsList.reduce((sum, t) => sum + (t.fiber || 25), 0) / daysCount),
+  }
+
+  // Average Actual Intake calculation
   const totalDaysWithLogs = logs.filter((l) => l.entries && l.entries.length > 0).length || 1
   const aggregated = sumNutrients(...logs.flatMap((l) => l.entries ? l.entries.map((e) => e.nutrients) : []))
 
@@ -87,30 +120,30 @@ export default function NutritionReportModal({ onClose }: Props) {
     }
   }
 
-  const calStatus = getStatus(avgCalories, targets.calories)
-  const carbsStatus = getStatus(avgCarbs, targets.carbs)
-  const proteinStatus = getStatus(avgProtein, targets.protein || (targets.completeProtein + targets.incompleteProtein))
-  const fatStatus = getStatus(avgFat, targets.fat)
-  const sodiumStatus = getStatus(avgSodium, targets.sodium || 2000, true) // Upper limit
-  const fiberStatus = getStatus(avgFiber, targets.fiber || 25)
+  const calStatus = getStatus(avgCalories, avgTargets.calories)
+  const carbsStatus = getStatus(avgCarbs, avgTargets.carbs)
+  const proteinStatus = getStatus(avgProtein, avgTargets.protein)
+  const fatStatus = getStatus(avgFat, avgTargets.fat)
+  const sodiumStatus = getStatus(avgSodium, avgTargets.sodium || 2000, true) // Upper limit
+  const fiberStatus = getStatus(avgFiber, avgTargets.fiber || 25)
 
   // Summary generation
   const warnings: string[] = []
   if (sodiumStatus.type === 'danger' || sodiumStatus.type === 'warning') {
-    warnings.push(`钠摄入量平均为 ${avgSodium} mg，超出健康参考范围，建议减少用盐及高钠酱料。`)
+    warnings.push(`钠摄入量平均为 ${avgSodium} mg，超出参考目标 (${avgTargets.sodium} mg)，建议减少用盐及高钠酱料。`)
   }
   if (fiberStatus.type === 'danger' || fiberStatus.type === 'warning') {
-    warnings.push(`膳食纤维平均仅 ${avgFiber} g (目标 ${targets.fiber || 25} g)，建议适当增加全谷物与新鲜蔬菜。`)
+    warnings.push(`膳食纤维平均仅 ${avgFiber} g (目标 ${avgTargets.fiber} g)，建议适当增加全谷物与新鲜蔬菜。`)
   }
-  if (calStatus.type === 'danger' && avgCalories > targets.calories) {
-    warnings.push(`日均热量明显超标 (${avgCalories} / ${targets.calories} kcal)，注意控制总摄入。`)
+  if (calStatus.type === 'danger' && avgCalories > avgTargets.calories) {
+    warnings.push(`日均热量明显超标 (${avgCalories} / 动态目标 ${avgTargets.calories} kcal)，注意控制总摄入。`)
   }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
       <div className="bg-white w-full max-w-lg rounded-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-          <h3 className="font-bold text-gray-800 text-sm">定期营养评估报告</h3>
+          <h3 className="font-bold text-gray-800 text-sm">定期营养评估报告 (动态目标)</h3>
           <button onClick={onClose} className="text-gray-400 text-sm">关闭</button>
         </div>
 
@@ -139,25 +172,25 @@ export default function NutritionReportModal({ onClose }: Props) {
               {/* Executive Summary */}
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 space-y-1">
                 <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
-                  <span>📊 综合评估结论</span>
+                  <span>📊 综合评估结论 (含运动及健身目标调整)</span>
                   <span className="text-emerald-600 font-normal">({totalDaysWithLogs}/{daysCount} 天有记录)</span>
                 </div>
                 <p className="text-xs text-emerald-700 leading-relaxed">
                   {warnings.length > 0
                     ? warnings.join(' ')
-                    : '整体营养摄入比例良好，各项指标均在目标范围内，请继续保持！'}
+                    : '整体营养摄入比例良好，各项指标均在动态目标范围内，请继续保持！'}
                 </p>
               </div>
 
               {/* Key Indicators Grid */}
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: '平均热量', actual: avgCalories, target: targets.calories, unit: 'kcal', status: calStatus },
-                  { label: '平均蛋白质', actual: avgProtein, target: targets.protein || (targets.completeProtein + targets.incompleteProtein), unit: 'g', status: proteinStatus },
-                  { label: '平均碳水', actual: avgCarbs, target: targets.carbs, unit: 'g', status: carbsStatus },
-                  { label: '平均脂肪', actual: avgFat, target: targets.fat, unit: 'g', status: fatStatus },
-                  { label: '平均钠', actual: avgSodium, target: targets.sodium || 2000, unit: 'mg', status: sodiumStatus },
-                  { label: '平均膳食纤维', actual: avgFiber, target: targets.fiber || 25, unit: 'g', status: fiberStatus },
+                  { label: '平均热量', actual: avgCalories, target: avgTargets.calories, unit: 'kcal', status: calStatus },
+                  { label: '平均蛋白质', actual: avgProtein, target: avgTargets.protein, unit: 'g', status: proteinStatus },
+                  { label: '平均碳水', actual: avgCarbs, target: avgTargets.carbs, unit: 'g', status: carbsStatus },
+                  { label: '平均脂肪', actual: avgFat, target: avgTargets.fat, unit: 'g', status: fatStatus },
+                  { label: '平均钠', actual: avgSodium, target: avgTargets.sodium || 2000, unit: 'mg', status: sodiumStatus },
+                  { label: '平均膳食纤维', actual: avgFiber, target: avgTargets.fiber || 25, unit: 'g', status: fiberStatus },
                 ].map((item) => (
                   <div key={item.label} className="bg-gray-50 rounded-xl p-3 flex flex-col justify-between">
                     <div className="flex items-center justify-between">

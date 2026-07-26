@@ -3,10 +3,12 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
+import { useFitnessGoalStore } from '../store/fitnessGoalStore'
 import { useScrollLock } from '../hooks/useScrollLock'
 import type { DailyLog } from '../types'
-import { NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
+import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS } from '../types'
 import { sumNutrients, formatDate } from '../lib/utils'
+import { adjustTargetsForExercise } from '../lib/nutrition'
 
 interface Props {
   onClose: () => void
@@ -19,11 +21,12 @@ export default function NutritionTrendsModal({ onClose }: Props) {
   useScrollLock(true)
   const user = useAuthStore((s) => s.user)
   const goal = useGoalStore((s) => s.goal)
+  const fitnessGoals = useFitnessGoalStore((s) => s.goals)
   const [period, setPeriod] = useState<Period>('7days')
   const [metric, setMetric] = useState<MetricKey>('calories')
   const [loading, setLoading] = useState(true)
   const [logs, setLogs] = useState<DailyLog[]>([])
-  const [hoveredData, setHoveredData] = useState<{ date: string; val: number } | null>(null)
+  const [hoveredData, setHoveredData] = useState<{ date: string; val: number; target: number } | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -60,9 +63,9 @@ export default function NutritionTrendsModal({ onClose }: Props) {
     }
   }, [user, period])
 
-  // Build daily data array for the period
+  // Build daily data array with dynamic per-day adjusted targets
   const daysCount = period === '7days' ? 7 : 30
-  const dailyPoints: { date: string; shortDate: string; value: number }[] = []
+  const dailyPoints: { date: string; shortDate: string; value: number; target: number }[] = []
   const today = new Date()
 
   for (let i = daysCount - 1; i >= 0; i--) {
@@ -73,25 +76,44 @@ export default function NutritionTrendsModal({ onClose }: Props) {
 
     const log = logs.find((l) => l.date === dateStr)
     let value = 0
-    if (log && log.entries && log.entries.length > 0) {
-      const totals = sumNutrients(...log.entries.map((e) => e.nutrients))
-      if (metric === 'protein') {
-        value = totals.completeProtein + totals.incompleteProtein || totals.protein || 0
-      } else {
-        value = totals[metric] || 0
+    let exCalories = 0
+    if (log) {
+      if (log.entries && log.entries.length > 0) {
+        const totals = sumNutrients(...log.entries.map((e) => e.nutrients))
+        if (metric === 'protein') {
+          value = totals.completeProtein + totals.incompleteProtein || totals.protein || 0
+        } else {
+          value = totals[metric] || 0
+        }
+      }
+      if (log.exercises && log.exercises.length > 0) {
+        exCalories = log.exercises.reduce((sum, ex) => sum + (ex.caloriesBurned || 0), 0)
       }
     }
-    dailyPoints.push({ date: dateStr, shortDate, value: Math.round(value) })
+
+    const activeFg = fitnessGoals.find((fg) => fg.startDate <= dateStr && fg.endDate >= dateStr)
+    const fgAdj = activeFg ? activeFg.calorieAdjustment : 0
+
+    const baseTargets = goal?.targets ?? EMPTY_NUTRIENTS
+    const dayTargets = adjustTargetsForExercise(baseTargets, exCalories, fgAdj)
+    let dayTarget = 0
+    if (metric === 'protein') {
+      dayTarget = (dayTargets.completeProtein + dayTargets.incompleteProtein) || dayTargets.protein || 0
+    } else {
+      dayTarget = dayTargets[metric] || 0
+    }
+
+    dailyPoints.push({ date: dateStr, shortDate, value: Math.round(value), target: Math.round(dayTarget) })
   }
 
-  const targetValue = goal?.targets ? Math.round(goal.targets[metric] || 0) : 0
-  const maxValue = Math.max(targetValue * 1.25, ...dailyPoints.map((p) => p.value), 10)
+  const avgTarget = Math.round(dailyPoints.reduce((acc, p) => acc + p.target, 0) / (dailyPoints.length || 1))
+  const maxValue = Math.max(avgTarget * 1.25, ...dailyPoints.map((p) => p.value), ...dailyPoints.map((p) => p.target), 10)
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
       <div className="bg-white w-full max-w-lg rounded-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-          <h3 className="font-bold text-gray-800 text-sm">营养摄入趋势</h3>
+          <h3 className="font-bold text-gray-800 text-sm">营养摄入趋势 (动态目标)</h3>
           <button onClick={onClose} className="text-gray-400 text-sm">关闭</button>
         </div>
 
@@ -134,11 +156,11 @@ export default function NutritionTrendsModal({ onClose }: Props) {
           {/* Value tooltip */}
           <div className="h-6 flex items-center justify-between text-xs text-gray-500 px-1">
             <span>
-              {hoveredData ? `${hoveredData.date}: ${hoveredData.val} ${NUTRIENT_UNITS[metric]}` : '点击/触摸柱状图查看具体数值'}
+              {hoveredData
+                ? `${hoveredData.date}: ${hoveredData.val} / 目标 ${hoveredData.target} ${NUTRIENT_UNITS[metric]}`
+                : '点击/触摸柱状图查看具体数值'}
             </span>
-            {targetValue > 0 && (
-              <span className="text-emerald-600 font-medium">目标: {targetValue} {NUTRIENT_UNITS[metric]}</span>
-            )}
+            <span className="text-emerald-600 font-medium">均值目标: {avgTarget} {NUTRIENT_UNITS[metric]}</span>
           </div>
 
           {/* SVG Bar Chart */}
@@ -149,12 +171,12 @@ export default function NutritionTrendsModal({ onClose }: Props) {
           ) : (
             <div className="bg-gray-50 rounded-xl p-3">
               <div className="relative h-48 w-full">
-                {/* Target Line */}
-                {targetValue > 0 && (
+                {/* Average Target Line */}
+                {avgTarget > 0 && (
                   <div
-                    className="absolute left-0 right-0 border-b-2 border-dashed border-emerald-400 z-10"
+                    className="absolute left-0 right-0 border-b-2 border-dashed border-emerald-400 z-10 pointer-events-none"
                     style={{
-                      bottom: `${Math.min(95, (targetValue / maxValue) * 100)}%`,
+                      bottom: `${Math.min(95, (avgTarget / maxValue) * 100)}%`,
                     }}
                   />
                 )}
@@ -163,15 +185,15 @@ export default function NutritionTrendsModal({ onClose }: Props) {
                 <div className="h-full flex items-end justify-between gap-1 pt-4 pb-6 px-1">
                   {dailyPoints.map((pt) => {
                     const heightPct = Math.min(100, Math.max(4, (pt.value / maxValue) * 100))
-                    const isOver = targetValue > 0 && pt.value > targetValue * 1.15
+                    const isOver = pt.target > 0 && pt.value > pt.target * 1.15
                     const barColor = pt.value === 0 ? 'bg-gray-200' : isOver ? 'bg-amber-500' : 'bg-emerald-500'
 
                     return (
                       <div
                         key={pt.date}
                         className="flex-1 flex flex-col items-center h-full justify-end cursor-pointer group"
-                        onMouseEnter={() => setHoveredData({ date: pt.date, val: pt.value })}
-                        onTouchStart={() => setHoveredData({ date: pt.date, val: pt.value })}
+                        onMouseEnter={() => setHoveredData({ date: pt.date, val: pt.value, target: pt.target })}
+                        onTouchStart={() => setHoveredData({ date: pt.date, val: pt.value, target: pt.target })}
                       >
                         <div
                           className={`w-full rounded-t-sm ${barColor} transition-all duration-300 group-hover:brightness-90`}

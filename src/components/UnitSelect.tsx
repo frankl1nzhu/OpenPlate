@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { COMMON_UNITS } from '../types'
 
 interface UnitSelectProps {
@@ -9,30 +9,36 @@ interface UnitSelectProps {
 }
 
 export default function UnitSelect({ value, onChange, className = '', inputClassName = '' }: UnitSelectProps) {
-  const isCommon = COMMON_UNITS.includes(value) || value === ''
-  // Only maintain local custom string if they haven't submitted yet
-  const [customValue, setCustomValue] = useState(isCommon ? '' : value)
+  const initialIsCustom = !COMMON_UNITS.includes(value) && value !== ''
+  const [isCustomMode, setIsCustomMode] = useState(initialIsCustom)
+
+  useEffect(() => {
+    if (!COMMON_UNITS.includes(value) && value !== '') {
+      setIsCustomMode(true)
+    }
+  }, [value])
 
   const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value
     if (val === 'custom') {
-      onChange(customValue)
+      setIsCustomMode(true)
+      if (COMMON_UNITS.includes(value)) {
+        onChange('')
+      }
     } else {
+      setIsCustomMode(false)
       onChange(val)
     }
   }
 
   const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCustomValue(e.target.value)
     onChange(e.target.value)
   }
-
-  const selectValue = isCommon ? value : 'custom'
 
   return (
     <div className={`flex gap-2 items-center ${className}`}>
       <select
-        value={selectValue}
+        value={isCustomMode ? 'custom' : value}
         onChange={handleSelect}
         className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
       >
@@ -42,13 +48,14 @@ export default function UnitSelect({ value, onChange, className = '', inputClass
         ))}
         <option value="custom">自定义...</option>
       </select>
-      {!isCommon && (
+      {isCustomMode && (
         <input
           type="text"
           value={value}
           onChange={handleCustomChange}
           placeholder="输入单位"
-          className={`w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${inputClassName}`}
+          autoFocus
+          className={`w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${inputClassName}`}
         />
       )}
     </div>
