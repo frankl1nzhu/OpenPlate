@@ -6,6 +6,7 @@ import { uploadPhoto, compressImage, deletePhoto } from '../lib/storage'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS } from '../types'
 import type { Nutrients, FoodUnit } from '../types'
 import DeleteReasonDialog from '../components/DeleteReasonDialog'
+import NumberInput from '../components/NumberInput'
 
 export default function FoodFormPage() {
   const { id } = useParams()
@@ -219,10 +220,9 @@ export default function FoodFormPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">基准数量与单位</label>
           <div className="flex gap-2">
-            <input
-              type="number"
+            <NumberInput
               value={baseAmount}
-              onChange={(e) => setBaseAmount(parseFloat(e.target.value) || 0)}
+              onValueChange={setBaseAmount}
               min={0.01}
               step="any"
               className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -266,10 +266,9 @@ export default function FoodFormPage() {
                     className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <span className="text-sm text-gray-500 shrink-0">=</span>
-                  <input
-                    type="number"
-                    value={eu.grams || ''}
-                    onChange={(e) => updateExtraUnit(index, 'grams', e.target.value)}
+                  <NumberInput
+                    value={eu.grams}
+                    onValueChange={(value) => updateExtraUnit(index, 'grams', String(value))}
                     min={0.01}
                     step="any"
                     placeholder="50"
@@ -302,10 +301,9 @@ export default function FoodFormPage() {
                 <label className="text-sm text-gray-600 w-24 shrink-0">
                   {NUTRIENT_LABELS[key]}
                 </label>
-                <input
-                  type="number"
-                  value={nutrients[key] || ''}
-                  onChange={(e) => handleNutrient(key, e.target.value)}
+                <NumberInput
+                  value={nutrients[key]}
+                  onValueChange={(value) => handleNutrient(key, String(value))}
                   min={0}
                   step="any"
                   className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -317,10 +315,9 @@ export default function FoodFormPage() {
             {/* Protein row with checkbox */}
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 w-24 shrink-0">蛋白质</label>
-              <input
-                type="number"
-                value={protein || ''}
-                onChange={(e) => setProtein(parseFloat(e.target.value) || 0)}
+              <NumberInput
+                value={protein}
+                onValueChange={setProtein}
                 min={0}
                 step="any"
                 className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -366,10 +363,9 @@ export default function FoodFormPage() {
                   <label className="text-sm text-gray-600 w-24 shrink-0">
                     {NUTRIENT_LABELS[key]}
                   </label>
-                  <input
-                    type="number"
-                    value={nutrients[key] || ''}
-                    onChange={(e) => handleNutrient(key, e.target.value)}
+                  <NumberInput
+                    value={nutrients[key]}
+                    onValueChange={(value) => handleNutrient(key, String(value))}
                     min={0}
                     step="any"
                     className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"

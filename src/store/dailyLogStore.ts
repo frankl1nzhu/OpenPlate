@@ -15,6 +15,7 @@ interface DailyLogState {
   loading: boolean
   setSelectedDate: (date: string) => void
   addEntry: (userId: string, entry: Omit<LogEntry, 'id'>, date?: string) => Promise<void>
+  addEntries: (userId: string, entries: Omit<LogEntry, 'id'>[], date?: string) => Promise<void>
   removeEntry: (userId: string, entryId: string) => Promise<void>
   addExercise: (userId: string, exercise: Omit<ExerciseEntry, 'id'>) => Promise<void>
   removeExercise: (userId: string, exerciseId: string) => Promise<void>
@@ -53,6 +54,29 @@ export const useDailyLogStore = create<DailyLogState>()(
         // Optimistic local update
         const current = get().currentLog
         const entries = [...(current?.entries ?? []), newEntry]
+        set({ currentLog: { id: docId, userId, date, entries, exercises: current?.exercises ?? [] }, loading: false })
+      },
+
+      addEntries: async (userId, entriesToAdd, explicitDate) => {
+        if (entriesToAdd.length === 0) return
+        const date = explicitDate ?? get().selectedDate
+        const docId = `${userId}_${date}`
+        const newEntries: LogEntry[] = entriesToAdd.map((entry) => ({ ...entry, id: crypto.randomUUID() }))
+        const ref = doc(db, 'dailyLogs', docId)
+
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(ref)
+          const existing = snap.exists() ? snap.data() : {}
+          tx.set(ref, {
+            userId,
+            date,
+            entries: [...(existing.entries ?? []), ...newEntries],
+            exercises: existing.exercises ?? [],
+          })
+        })
+
+        const current = get().currentLog
+        const entries = [...(current?.entries ?? []), ...newEntries]
         set({ currentLog: { id: docId, userId, date, entries, exercises: current?.exercises ?? [] }, loading: false })
       },
 

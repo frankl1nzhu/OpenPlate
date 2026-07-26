@@ -214,6 +214,7 @@ export interface LogEntry {
   unit?: string          // unit used when logging
   nutrients: Nutrients   // calculated at log time
   timestamp: number
+  mealIndex?: number     // entries added together belong to the same meal
 }
 
 export interface DailyLog {

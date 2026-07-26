@@ -11,6 +11,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { DailyLog, LogEntry, Food, Meal } from '../types'
 import { calculateBMR, calculateTDEE, calculateRecommendedTargets } from '../lib/nutrition'
+import NumberInput from '../components/NumberInput'
 
 const GENDER_LABELS: Record<string, string> = { male: '男', female: '女' }
 
@@ -414,10 +415,9 @@ export default function SettingsPage() {
           <div className="space-y-3 bg-gray-50 rounded-xl p-4">
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 w-20 shrink-0">年龄</label>
-              <input
-                type="number"
-                value={infoAge || ''}
-                onChange={(e) => setInfoAge(parseInt(e.target.value) || 0)}
+              <NumberInput
+                value={infoAge}
+                onValueChange={(value) => setInfoAge(Math.trunc(value))}
                 min={1}
                 max={120}
                 className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -446,10 +446,9 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 w-20 shrink-0">体重</label>
-              <input
-                type="number"
-                value={infoWeight || ''}
-                onChange={(e) => setInfoWeight(parseFloat(e.target.value) || 0)}
+              <NumberInput
+                value={infoWeight}
+                onValueChange={setInfoWeight}
                 min={1}
                 step="0.1"
                 className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -459,10 +458,9 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 w-20 shrink-0">身高</label>
-              <input
-                type="number"
-                value={infoHeight || ''}
-                onChange={(e) => setInfoHeight(parseFloat(e.target.value) || 0)}
+              <NumberInput
+                value={infoHeight}
+                onValueChange={setInfoHeight}
                 min={1}
                 step="0.1"
                 className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -581,10 +579,9 @@ export default function SettingsPage() {
                     <label className="text-sm text-gray-600 w-24 shrink-0">
                       {NUTRIENT_LABELS[key]}
                     </label>
-                    <input
-                      type="number"
-                      value={targets[key] || ''}
-                      onChange={(e) => handleChange(key, e.target.value)}
+                    <NumberInput
+                      value={targets[key]}
+                      onValueChange={(value) => handleChange(key, String(value))}
                       min={0}
                       max={99999}
                       step="any"
@@ -618,10 +615,9 @@ export default function SettingsPage() {
                   <label className="text-sm text-gray-600 w-24 shrink-0">
                     {NUTRIENT_LABELS[key]}
                   </label>
-                  <input
-                    type="number"
-                    value={targets[key] || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
+                  <NumberInput
+                    value={targets[key]}
+                    onValueChange={(value) => handleChange(key, String(value))}
                     min={0}
                     max={99999}
                     step="any"
@@ -812,10 +808,9 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 shrink-0">热量调整</label>
-              <input
-                type="number"
+              <NumberInput
                 value={fgCalorieAdj}
-                onChange={(e) => setFgCalorieAdj(parseInt(e.target.value) || 0)}
+                onValueChange={(value) => setFgCalorieAdj(Math.trunc(value))}
                 step={50}
                 className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />

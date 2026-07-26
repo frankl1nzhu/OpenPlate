@@ -6,6 +6,7 @@ import { useDailyLogStore } from '../store/dailyLogStore'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS } from '../types'
 import type { Nutrients } from '../types'
+import NumberInput from './NumberInput'
 
 // ─── Verify modal ────────────────────────────────────────────────────────────
 
@@ -145,10 +146,9 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
             {visibleMacroKeys.map((key) => (
               <div key={key} className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 w-24 shrink-0">{NUTRIENT_LABELS[key]}</label>
-                <input
-                  type="number"
-                  value={editNutrients[key] || ''}
-                  onChange={(e) => handleNutrient(key, e.target.value)}
+                <NumberInput
+                  value={editNutrients[key]}
+                  onValueChange={(value) => handleNutrient(key, String(value))}
                   min={0} step="any"
                   className={`flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                 />
@@ -158,11 +158,9 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
 
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 w-24 shrink-0">蛋白质</label>
-              <input
-                type="number"
-                value={totalProtein || ''}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value) || 0
+              <NumberInput
+                value={totalProtein}
+                onValueChange={(val) => {
                   setEditNutrients((prev) => ({
                     ...prev,
                     completeProtein: editIsComplete ? val : 0,
@@ -190,10 +188,9 @@ function VerifyModal({ task, onClose }: { task: AiTask; onClose: () => void }) {
             {showMicro && MICRO_KEYS.map((key) => (
               <div key={key} className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 w-24 shrink-0">{NUTRIENT_LABELS[key]}</label>
-                <input
-                  type="number"
-                  value={editNutrients[key] || ''}
-                  onChange={(e) => handleNutrient(key, e.target.value)}
+                <NumberInput
+                  value={editNutrients[key]}
+                  onValueChange={(value) => handleNutrient(key, String(value))}
                   min={0} step="any"
                   className={`flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                 />
@@ -225,13 +222,12 @@ function TaskCard({ task }: { task: AiTask }) {
 
   return (
     <>
-      <div className={`flex items-center gap-3 px-4 py-3 ${
-        task.status === 'ready'
+      <div className={`flex items-center gap-3 px-4 py-3 ${task.status === 'ready'
           ? 'bg-amber-50 border-b border-amber-200'
           : task.status === 'failed'
-          ? 'bg-red-50 border-b border-red-200'
-          : 'bg-blue-50 border-b border-blue-200'
-      }`}>
+            ? 'bg-red-50 border-b border-red-200'
+            : 'bg-blue-50 border-b border-blue-200'
+        }`}>
         {task.status === 'processing' ? (
           <div className="w-8 h-8 shrink-0 flex items-center justify-center">
             <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />

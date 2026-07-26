@@ -8,6 +8,7 @@ import { sumNutrients, getFoodUnits, calculateFoodNutrients } from '../lib/utils
 import { useScrollLock } from '../hooks/useScrollLock'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, MACRO_KEYS, EMPTY_NUTRIENTS } from '../types'
 import type { MealFood } from '../types'
+import NumberInput from '../components/NumberInput'
 
 export default function MealFormPage() {
   const { id } = useParams()
@@ -209,10 +210,9 @@ export default function MealFormPage() {
                       <div className="text-sm font-medium truncate">{food.name}</div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <input
-                        type="number"
+                      <NumberInput
                         value={mf.quantity}
-                        onChange={(e) => updateQuantity(index, parseFloat(e.target.value) || 0)}
+                        onValueChange={(quantity) => updateQuantity(index, quantity)}
                         min={0}
                         step="any"
                         className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"

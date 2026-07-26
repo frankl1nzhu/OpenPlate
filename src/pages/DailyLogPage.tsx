@@ -28,6 +28,20 @@ export default function DailyLogPage() {
   const entries = currentLog?.entries ?? []
   const exercises = currentLog?.exercises ?? []
 
+  const mealGroups = entries.reduce<{ mealIndex: number; entries: LogEntry[] }[]>((groups, entry, index) => {
+    // Old records did not have mealIndex; preserve them as individual meals.
+    const mealIndex = entry.mealIndex ?? index + 1
+    const group = groups.find((item) => item.mealIndex === mealIndex)
+    if (group) group.entries.push(entry)
+    else groups.push({ mealIndex, entries: [entry] })
+    return groups
+  }, [])
+
+  const getMealTitle = (index: number) => {
+    const chineseNumbers = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+    return index <= 10 ? `第${chineseNumbers[index]}顿` : `第${index}顿`
+  }
+
   const totalNutrients = entries.length > 0
     ? sumNutrients(...entries.map((e) => e.nutrients))
     : { ...EMPTY_NUTRIENTS }
@@ -269,36 +283,26 @@ export default function DailyLogPage() {
             今日还没有记录，点击添加
           </div>
         ) : (
-          <div className="space-y-2">
-            {entries.map((entry) => {
-              const photo = getEntryPhoto(entry)
+          <div className="space-y-3">
+            {mealGroups.map((group) => {
+              const mealCalories = group.entries.reduce((total, entry) => total + entry.nutrients.calories, 0)
               return (
-                <div
-                  key={entry.id}
-                  className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100"
-                >
-                  {photo ? (
-                    <img src={photo} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                  ) : (
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm shrink-0 ${getEntryIconClass(entry.type)}`}>
-                      {getEntryIconChar(entry)}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{getEntryName(entry)}</div>
-                    <div className="text-xs text-gray-400">
-                      {entry.quantity} {getEntryUnit(entry)} · {Math.round(entry.nutrients.calories)} kcal
-                    </div>
+                <section key={group.mealIndex} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="px-3 py-2 flex items-center justify-between bg-emerald-50 border-b border-emerald-100">
+                    <h4 className="text-sm font-medium text-emerald-800">{getMealTitle(group.mealIndex)}</h4>
+                    <span className="text-xs text-emerald-600">{Math.round(mealCalories)} kcal · {group.entries.length} 项</span>
                   </div>
-                  <button
-                    onClick={() => user && removeEntry(user.uid, entry.id)}
-                    className="text-gray-300 p-1 shrink-0"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+                  {group.entries.map((entry) => {
+                    const photo = getEntryPhoto(entry)
+                    return (
+                      <div key={entry.id} className="flex items-center gap-3 p-3 border-b border-gray-50 last:border-b-0">
+                        {photo ? <img src={photo} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" /> : <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm shrink-0 ${getEntryIconClass(entry.type)}`}>{getEntryIconChar(entry)}</div>}
+                        <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{getEntryName(entry)}</div><div className="text-xs text-gray-400">{entry.quantity} {getEntryUnit(entry)} · {Math.round(entry.nutrients.calories)} kcal</div></div>
+                        <button onClick={() => user && removeEntry(user.uid, entry.id)} className="text-gray-300 p-1 shrink-0" aria-label={`删除${getEntryName(entry)}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                      </div>
+                    )
+                  })}
+                </section>
               )
             })}
           </div>
