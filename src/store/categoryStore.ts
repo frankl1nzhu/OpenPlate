@@ -15,7 +15,7 @@ interface CategoryState {
 
 let unsubscribe: (() => void) | null = null
 
-export const useCategoryStore = create<CategoryState>()((_set, get) => ({
+export const useCategoryStore = create<CategoryState>()((set, get) => ({
   categories: DEFAULT_FOOD_CATEGORIES,
   loading: true,
 
@@ -23,8 +23,14 @@ export const useCategoryStore = create<CategoryState>()((_set, get) => ({
     const trimmed = name.trim()
     if (!trimmed || get().categories.includes(trimmed)) return
     const next = [...get().categories, trimmed]
-    await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
-    useToastStore.getState().addToast(`分类「${trimmed}」已创建`, { type: 'success' })
+    set({ categories: next })
+    try {
+      await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
+      useToastStore.getState().addToast(`分类「${trimmed}」已创建`, { type: 'success' })
+    } catch (err) {
+      console.error('addCategory error:', err)
+      useToastStore.getState().addToast('同步创建保存受阻', { type: 'error' })
+    }
   },
 
   renameCategory: async (oldName: string, newName: string) => {
@@ -36,32 +42,44 @@ export const useCategoryStore = create<CategoryState>()((_set, get) => ({
     }
 
     const next = get().categories.map((c) => (c === oldName ? trimmed : c))
-    await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
+    set({ categories: next })
+    try {
+      await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
 
-    // Batch update all foods containing oldName
-    const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(oldName))
-    await Promise.all(
-      foodsToUpdate.map((f) => {
-        const newCats = (f.categories || []).map((c) => (c === oldName ? trimmed : c))
-        return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
-      })
-    )
-    useToastStore.getState().addToast(`分类已重命名为「${trimmed}」`, { type: 'success' })
+      // Batch update all foods containing oldName
+      const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(oldName))
+      await Promise.allSettled(
+        foodsToUpdate.map((f) => {
+          const newCats = (f.categories || []).map((c) => (c === oldName ? trimmed : c))
+          return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
+        })
+      )
+      useToastStore.getState().addToast(`分类已修改为「${trimmed}」`, { type: 'success' })
+    } catch (err) {
+      console.error('renameCategory error:', err)
+      useToastStore.getState().addToast('修改分类保存受阻', { type: 'error' })
+    }
   },
 
   deleteCategory: async (name: string) => {
     const next = get().categories.filter((c) => c !== name)
-    await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
+    set({ categories: next })
+    try {
+      await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
 
-    // Batch remove category from all foods
-    const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(name))
-    await Promise.all(
-      foodsToUpdate.map((f) => {
-        const newCats = (f.categories || []).filter((c) => c !== name)
-        return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
-      })
-    )
-    useToastStore.getState().addToast(`分类「${name}」已删除`, { type: 'success' })
+      // Batch remove category from all foods
+      const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(name))
+      await Promise.allSettled(
+        foodsToUpdate.map((f) => {
+          const newCats = (f.categories || []).filter((c) => c !== name)
+          return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
+        })
+      )
+      useToastStore.getState().addToast(`分类「${name}」已删除`, { type: 'success' })
+    } catch (err) {
+      console.error('deleteCategory error:', err)
+      useToastStore.getState().addToast('删除分类保存受阻', { type: 'error' })
+    }
   },
 }))
 
