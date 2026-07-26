@@ -4,6 +4,7 @@ import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { cleanForFirestore } from '../lib/utils'
 import type { UserProfile } from '../types'
+import { useToastStore } from './toastStore'
 
 interface UserProfileState {
   profile: UserProfile | null
@@ -54,7 +55,9 @@ export function subscribeUserProfile(userId: string) {
     } else {
       useUserProfileStore.setState({ profile: null, loading: false })
     }
-  }, () => {
+  }, (err) => {
+    console.error('subscribeUserProfile error:', err)
+    useToastStore.getState().addToast('用户资料同步受阻', { type: 'error' })
     useUserProfileStore.setState({ loading: false })
   })
 }

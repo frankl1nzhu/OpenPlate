@@ -1,10 +1,42 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { storage } from './firebase'
 
 export async function uploadPhoto(file: File, path: string): Promise<string> {
   const storageRef = ref(storage, path)
   await uploadBytes(storageRef, file)
   return getDownloadURL(storageRef)
+}
+
+export function uploadPhotoResumable(
+  file: File,
+  path: string,
+  onProgress?: (progress: number) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const storageRef = ref(storage, path)
+    const uploadTask = uploadBytesResumable(storageRef, file)
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = snapshot.totalBytes > 0 
+          ? (snapshot.bytesTransferred / snapshot.totalBytes) * 100 
+          : 0
+        if (onProgress) onProgress(Math.round(progress))
+      },
+      (error) => {
+        reject(error)
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+          resolve(downloadURL)
+        } catch (err) {
+          reject(err)
+        }
+      }
+    )
+  })
 }
 
 /** Delete a photo by its full download URL or storage path. Silently ignores if not found. */

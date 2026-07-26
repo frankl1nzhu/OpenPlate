@@ -13,10 +13,12 @@ import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 import AIQuickRecordModal from '../components/AIQuickRecordModal'
 import AITaskBanner from '../components/AITaskBanner'
+import NutritionReportModal from '../components/NutritionReportModal'
+import NutritionTrendsModal from '../components/NutritionTrendsModal'
 
 export default function DailyLogPage() {
   const user = useAuthStore((s) => s.user)
-  const { currentLog, selectedDate, setSelectedDate, removeEntry, removeExercise, loading } = useDailyLogStore()
+  const { currentLog, selectedDate, setSelectedDate, removeEntry, removeExercise, copyLogToDate, loading } = useDailyLogStore()
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
   const { goal, homeNutrientKeys } = useGoalStore()
@@ -24,10 +26,14 @@ export default function DailyLogPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalTab, setAddModalTab] = useState<'food' | 'exercise'>('food')
   const [showAIQuickModal, setShowAIQuickModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [showTrendsModal, setShowTrendsModal] = useState(false)
+  const [showCopyModal, setShowCopyModal] = useState(false)
+  const [copyTargetDate, setCopyTargetDate] = useState('')
+  const [copying, setCopying] = useState(false)
   const dateInputRef = useRef<HTMLInputElement>(null)
-
-  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set())
   const addToast = useToastStore((s) => s.addToast)
+
 
   const handleDeleteEntry = (entryId: string, entryName: string) => {
     if (!user) return
@@ -87,6 +93,7 @@ export default function DailyLogPage() {
 
   const allEntries = currentLog?.entries ?? []
   const allExercises = currentLog?.exercises ?? []
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set())
   const entries = allEntries.filter(e => !pendingDeletes.has(e.id))
   const exercises = allExercises.filter(e => !pendingDeletes.has(e.id))
 
@@ -156,7 +163,6 @@ export default function DailyLogPage() {
 
   const isToday = selectedDate === new Date().toISOString().split('T')[0]
 
-  // Whether a nutrient key should be shown based on homeNutrientKeys setting and having a target
   const isActive = (key: keyof Nutrients) => {
     const inSelected = homeNutrientKeys.length > 0
       ? homeNutrientKeys.includes(key)
@@ -167,9 +173,9 @@ export default function DailyLogPage() {
   const getRingColor = (actual: number, target: number) => {
     if (!target) return '#34d399'
     const pct = (actual / target) * 100
-    if (pct < 80) return '#34d399'   // emerald-400
-    if (pct <= 100) return '#10b981' // emerald-500
-    return '#f59e0b'                 // amber-500
+    if (pct < 80) return '#34d399'
+    if (pct <= 100) return '#10b981'
+    return '#f59e0b'
   }
 
   const renderNRing = (label: string, actual: number, target: number, unit: string) => {
@@ -224,13 +230,11 @@ export default function DailyLogPage() {
     return entry.type === 'food' ? '食' : '餐'
   }
 
-  // Total protein: actual = complete + incomplete; target from goal
   const totalProteinActual = totalNutrients.completeProtein + totalNutrients.incompleteProtein
   const totalProteinTarget = targets.protein || (targets.completeProtein + targets.incompleteProtein)
 
   return (
     <div className="pb-20">
-      {/* Date selector */}
       <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100">
         <button onClick={() => handleDateChange(-1)} className="p-2 text-gray-400" aria-label="前一天">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,10 +275,32 @@ export default function DailyLogPage() {
         </button>
       </div>
 
-      {/* AI task status banner */}
+      <div className="px-4 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between text-xs">
+        <button
+          onClick={() => { setCopyTargetDate(selectedDate); setShowCopyModal(true) }}
+          disabled={loading || entries.length === 0}
+          className="text-emerald-600 font-medium hover:underline disabled:opacity-40"
+        >
+          📋 复制今日记录
+        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowTrendsModal(true)}
+            className="text-gray-600 font-medium hover:text-emerald-600"
+          >
+            📈 趋势图表
+          </button>
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="text-gray-600 font-medium hover:text-emerald-600"
+          >
+            📊 营养报告
+          </button>
+        </div>
+      </div>
+
       <AITaskBanner type="quick" />
 
-      {/* Quick action buttons */}
       <div className="px-4 py-2 bg-white border-b border-gray-100 flex gap-2">
         <button
           onClick={() => setShowAIQuickModal(true)}
@@ -299,16 +325,13 @@ export default function DailyLogPage() {
         </button>
       </div>
 
-      {/* Nutrient summary */}
       <div className="px-4 py-3 bg-white mb-2">
-        {/* Exercise calories */}
         {totalExerciseCalories > 0 && (
           <div className="text-center text-xs text-purple-500 mb-2.5">
             运动消耗 {totalExerciseCalories} kcal
           </div>
         )}
 
-        {/* Nutrient rings */}
         <div className="grid grid-cols-3 gap-3">
           {isActive('calories') && renderNRing('热量', totalNutrients.calories, targets.calories, 'kcal')}
           {isActive('carbs') && renderNRing('碳水', totalNutrients.carbs, targets.carbs, 'g')}
@@ -329,7 +352,6 @@ export default function DailyLogPage() {
         </div>
       </div>
 
-      {/* Entry list */}
       <div className="px-4">
         <div className="mb-2">
           <h3 className="text-sm font-medium text-gray-700">饮食记录</h3>
@@ -370,7 +392,6 @@ export default function DailyLogPage() {
         )}
       </div>
 
-      {/* Exercise records */}
       <div className="px-4 mt-2">
         <div className="mb-2">
           <h3 className="text-sm font-medium text-gray-700">运动记录</h3>
@@ -416,6 +437,62 @@ export default function DailyLogPage() {
 
       {showAIQuickModal && (
         <AIQuickRecordModal onClose={() => setShowAIQuickModal(false)} />
+      )}
+
+      {showTrendsModal && (
+        <NutritionTrendsModal onClose={() => setShowTrendsModal(false)} />
+      )}
+
+      {showReportModal && (
+        <NutritionReportModal onClose={() => setShowReportModal(false)} />
+      )}
+
+      {showCopyModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl p-4 space-y-3">
+            <h3 className="font-bold text-gray-800 text-sm">复制 {selectedDate} 的记录</h3>
+            <p className="text-xs text-gray-500">将当前日期的全部饮食和运动记录批量复制到目标日期：</p>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">目标日期</label>
+              <input
+                type="date"
+                value={copyTargetDate}
+                onChange={(e) => setCopyTargetDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCopyModal(false)}
+                className="flex-1 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!user || !copyTargetDate) return
+                  setCopying(true)
+                  try {
+                    await copyLogToDate(user.uid, selectedDate, copyTargetDate)
+                    addToast(`已成功复制记录到 ${copyTargetDate}`, { type: 'success' })
+                    setShowCopyModal(false)
+                  } catch (err) {
+                    console.error(err)
+                    addToast('复制失败，请重试', { type: 'error' })
+                  } finally {
+                    setCopying(false)
+                  }
+                }}
+                disabled={copying || !copyTargetDate || copyTargetDate === selectedDate}
+                className="flex-1 py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+              >
+                {copying ? '复制中...' : '确认复制'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

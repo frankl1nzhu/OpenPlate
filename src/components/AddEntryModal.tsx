@@ -12,6 +12,7 @@ import { useScrollLock } from '../hooks/useScrollLock'
 import NumberInput from './NumberInput'
 import { EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS, EXERCISE_TYPE_LABELS, EXERCISE_INTENSITY_LABELS } from '../types'
 import type { Nutrients, ExerciseType, ExerciseIntensity, Food } from '../types'
+import UnitSelect from './UnitSelect'
 
 interface Props {
   onClose: () => void
@@ -49,6 +50,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
   const [drafts, setDrafts] = useState<DietDraft[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [quickName, setQuickName] = useState('')
+  const [quickUnit, setQuickUnit] = useState('份')
   const [quickProtein, setQuickProtein] = useState(0)
   const [quickIsComplete, setQuickIsComplete] = useState(false)
   const [quickNutrients, setQuickNutrients] = useState<Nutrients>({ ...EMPTY_NUTRIENTS })
@@ -121,10 +123,11 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
       incompleteProtein: quickIsComplete ? 0 : quickProtein,
     }
     setDrafts((current) => [...current, {
-      id: crypto.randomUUID(), type: 'quick', refId: '', name: quickName.trim(), quantity: 1,
+      id: crypto.randomUUID(), type: 'quick', refId: '', name: quickName.trim(), quantity: 1, unit: quickUnit,
       nutrients, photoFile: quickPhotoFile ?? undefined, photoURL: quickPhotoPreview ?? undefined,
     }])
     setQuickName('')
+    setQuickUnit('份')
     setQuickProtein(0)
     setQuickIsComplete(false)
     setQuickNutrients({ ...EMPTY_NUTRIENTS })
@@ -159,7 +162,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
           name: draft.name,
           ...(photoURL ? { photoURL } : {}),
           quantity: draft.quantity,
-          ...(draft.type === 'food' && draft.unit ? { unit: draft.unit } : {}),
+          ...(draft.unit ? { unit: draft.unit } : {}),
           nutrients: calculateDraftNutrients(draft),
           timestamp: timestamp + index,
           mealIndex: nextMealIndex,
@@ -223,7 +226,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
             <div className="flex border-b border-gray-100 shrink-0">{([['food', '食物'], ['meal', '套餐'], ['quick', '快速添加']] as [DietTab, string][]).map(([key, label]) => <button key={key} onClick={() => setTabAndSearch(key)} className={`flex-1 py-2 text-sm font-medium ${tab === key ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-400'}`}>{label}</button>)}</div>
             <div className="flex-1 overflow-y-auto px-4 py-3">
               {tab === 'quick' ? (
-                <div className="space-y-3"><input type="text" value={quickName} onChange={(event) => setQuickName(event.target.value)} placeholder="如：午餐外卖" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <div className="space-y-3"><div className="flex gap-2"><input type="text" value={quickName} onChange={(event) => setQuickName(event.target.value)} placeholder="如：午餐外卖" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /><UnitSelect value={quickUnit} onChange={setQuickUnit} /></div>
                   <label className="flex items-center gap-2 cursor-pointer text-sm text-blue-500"><input type="file" accept="image/*" className="hidden" onChange={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (file) { if (quickPhotoPreview) URL.revokeObjectURL(quickPhotoPreview); setQuickPhotoFile(file); setQuickPhotoPreview(URL.createObjectURL(file)) } }} />{quickPhotoPreview ? <img src={quickPhotoPreview} alt="" className="w-10 h-10 object-cover rounded-lg" /> : '选择照片（可选）'}</label>
                   {quickMacroKeys.map((key) => <div key={key} className="flex items-center gap-2"><label className="text-sm text-gray-600 w-20">{NUTRIENT_LABELS[key]}</label><NumberInput value={quickNutrients[key]} onValueChange={(value) => setQuickNutrients((current) => ({ ...current, [key]: value }))} min={0} step="any" className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm" /><span className="text-xs text-gray-400 w-10">{NUTRIENT_UNITS[key]}</span></div>)}
                   <div className="flex items-center gap-2"><label className="text-sm text-gray-600 w-20">蛋白质</label><NumberInput value={quickProtein} onValueChange={setQuickProtein} min={0} step="any" className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm" /><span className="text-xs text-gray-400 w-10">g</span></div><label className="flex items-center gap-2 text-xs text-gray-500"><input type="checkbox" checked={quickIsComplete} onChange={(event) => setQuickIsComplete(event.target.checked)} />完全蛋白来源</label>
@@ -259,7 +262,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
             <div className="px-4 py-3 border-t border-gray-100 shrink-0 max-h-56 overflow-y-auto">
 
               <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium text-gray-700">本顿已选 {drafts.length} 项</span><span className="text-xs text-emerald-600">{Math.round(sumNutrients(...drafts.map(calculateDraftNutrients)).calories)} kcal</span></div>
-              {drafts.length > 0 && <div className="space-y-2 mb-3">{drafts.map((draft) => { const food = draft.type === 'food' ? foods.find((item) => item.id === draft.refId) : undefined; const units = food ? getFoodUnits(food) : []; return <div key={draft.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1.5"><span className="text-sm flex-1 truncate">{draft.name}</span>{draft.type !== 'quick' && <><NumberInput value={draft.quantity} onValueChange={(quantity) => updateDraft(draft.id, { quantity })} min={0} step="any" className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center" />{draft.type === 'food' && units.length > 1 ? <select value={draft.unit} onChange={(event) => updateDraft(draft.id, { unit: event.target.value, quantity: 1 })} className="max-w-20 px-1 py-1 border border-gray-300 rounded text-sm bg-white">{units.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select> : <span className="text-xs text-gray-400">{draft.type === 'food' ? draft.unit : '份'}</span>}</>}<button type="button" onClick={() => setDrafts((current) => current.filter((item) => item.id !== draft.id))} className="text-gray-400 p-1">×</button></div> })}</div>}
+              {drafts.length > 0 && <div className="space-y-2 mb-3">{drafts.map((draft) => { const food = draft.type === 'food' ? foods.find((item) => item.id === draft.refId) : undefined; const units = food ? getFoodUnits(food) : []; return <div key={draft.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1.5"><span className="text-sm flex-1 truncate">{draft.name}</span><NumberInput value={draft.quantity} onValueChange={(quantity) => updateDraft(draft.id, { quantity })} min={0} step="any" className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center" />{draft.type === 'food' && units.length > 1 ? <select value={draft.unit} onChange={(event) => updateDraft(draft.id, { unit: event.target.value, quantity: 1 })} className="max-w-20 px-1 py-1 border border-gray-300 rounded text-sm bg-white">{units.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select> : draft.type === 'quick' ? <UnitSelect value={draft.unit || '份'} onChange={(unit) => updateDraft(draft.id, { unit })} className="max-w-24" inputClassName="w-16" /> : <span className="text-xs text-gray-400">{draft.type === 'food' ? draft.unit : '份'}</span>}<button type="button" onClick={() => setDrafts((current) => current.filter((item) => item.id !== draft.id))} className="text-gray-400 p-1">×</button></div> })}</div>}
               <button onClick={handleAddMeal} disabled={submitting || drafts.length === 0} className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50">{submitting ? '添加中...' : `确认添加第 ${(currentLog?.entries ?? []).reduce((max, entry, index) => Math.max(max, entry.mealIndex ?? index + 1), 0) + 1} 顿`}</button>
             </div>
           </>

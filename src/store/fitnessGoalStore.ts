@@ -12,6 +12,7 @@ import {
 import { db } from '../lib/firebase'
 import { cleanForFirestore } from '../lib/utils'
 import type { FitnessGoal } from '../types'
+import { useToastStore } from './toastStore'
 
 interface FitnessGoalState {
   goals: FitnessGoal[]
@@ -58,6 +59,7 @@ export function subscribeFitnessGoals(userId: string) {
     useFitnessGoalStore.setState({ goals, loading: false })
   }, (err) => {
     console.error('subscribeFitnessGoals error:', err)
+    useToastStore.getState().addToast('健身目标同步受阻', { type: 'error' })
     useFitnessGoalStore.setState({ loading: false })
   })
 }

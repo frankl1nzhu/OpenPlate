@@ -171,6 +171,9 @@ export const NUTRIENT_UNITS: Record<keyof Nutrients, string> = {
   choline: 'mg',
 }
 
+export const COMMON_UNITS = ['g', 'ml', '个', '片', '份', '碗', '包', '瓶', '盘', '盒', '罐']
+export const DEFAULT_FOOD_CATEGORIES = ['主食', '肉蛋奶', '蔬菜', '水果', '零食饮料', '坚果油脂', '其他']
+
 export interface FoodUnit {
   name: string    // "g", "个", "片"
   grams: number   // grams equivalent of 1 of this unit
@@ -185,6 +188,7 @@ export interface Food {
   units?: FoodUnit[]     // multiple units with conversion
   isCompleteProtein: boolean
   nutrientsPerUnit: Nutrients // nutrients for defaultQuantity of base unit
+  categories?: string[]   // multiple food categories / tags
   createdBy: string
   createdAt: number
 }
@@ -259,7 +263,7 @@ export interface UserProfile {
   regularExercise?: boolean  // 是否规律锻炼
 }
 
-// 运动记录
+
 export type ExerciseType = 'running' | 'walking' | 'cycling' | 'swimming' | 'weight_training' | 'yoga' | 'hiit' | 'other'
 export type ExerciseIntensity = 'low' | 'moderate' | 'high'
 

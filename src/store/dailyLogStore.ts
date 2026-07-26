@@ -8,6 +8,7 @@ import {
 import { db } from '../lib/firebase'
 import type { DailyLog, LogEntry, ExerciseEntry } from '../types'
 import { formatDate } from '../lib/utils'
+import { useToastStore } from './toastStore'
 
 interface DailyLogState {
   currentLog: DailyLog | null
@@ -21,6 +22,7 @@ interface DailyLogState {
   removeEntry: (userId: string, entryId: string) => Promise<void>
   addExercise: (userId: string, exercise: Omit<ExerciseEntry, 'id'>) => Promise<void>
   removeExercise: (userId: string, exerciseId: string) => Promise<void>
+  copyLogToDate: (userId: string, sourceDate: string, targetDate: string) => Promise<void>
 }
 
 let unsubscribe: (() => void) | null = null
@@ -164,6 +166,37 @@ export const useDailyLogStore = create<DailyLogState>()(
         const exercises = (current?.exercises ?? []).filter((e) => e.id !== exerciseId)
         set({ currentLog: { id: docId, userId, date, entries: current?.entries ?? [], exercises }, loading: false })
       },
+
+      copyLogToDate: async (userId, sourceDate, targetDate) => {
+        const sourceDocId = `${userId}_${sourceDate}`
+        const targetDocId = `${userId}_${targetDate}`
+        
+        await runTransaction(db, async (tx) => {
+          const sourceRef = doc(db, 'dailyLogs', sourceDocId)
+          const targetRef = doc(db, 'dailyLogs', targetDocId)
+          
+          const sourceSnap = await tx.get(sourceRef)
+          if (!sourceSnap.exists()) return
+
+          const sourceData = sourceSnap.data()
+          const sourceEntries = sourceData.entries ?? []
+          const sourceExercises = sourceData.exercises ?? []
+
+          // Re-generate IDs for copied items to avoid conflicts
+          const entriesToCopy = sourceEntries.map((e: LogEntry) => ({ ...e, id: crypto.randomUUID() }))
+          const exercisesToCopy = sourceExercises.map((e: ExerciseEntry) => ({ ...e, id: crypto.randomUUID() }))
+
+          const targetSnap = await tx.get(targetRef)
+          const targetData = targetSnap.exists() ? targetSnap.data() : {}
+          
+          tx.set(targetRef, {
+            userId,
+            date: targetDate,
+            entries: [...(targetData.entries ?? []), ...entriesToCopy],
+            exercises: [...(targetData.exercises ?? []), ...exercisesToCopy],
+          })
+        })
+      },
     }),
     {
       name: 'openplate-dailylog',
@@ -193,6 +226,7 @@ export function subscribeDailyLog(userId: string, date: string) {
       useDailyLogStore.setState({ currentLog: null, loading: false })
     }
   }, () => {
+    useToastStore.getState().addToast('日记数据同步受阻', { type: 'error' })
     useDailyLogStore.setState({ loading: false })
   })
 }

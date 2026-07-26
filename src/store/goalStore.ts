@@ -4,6 +4,7 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { DailyGoal, Nutrients } from '../types'
 import { EMPTY_NUTRIENTS } from '../types'
+import { useToastStore } from './toastStore'
 
 interface GoalState {
   goal: DailyGoal | null
@@ -49,8 +50,10 @@ export function subscribeGoal(userId: string) {
         loading: false,
       })
     }
-  }, () => {
+  }, (err) => {
+    console.error('subscribeGoal error:', err)
     useGoalStore.setState({ loading: false })
+    useToastStore.getState().addToast('目标数据同步受阻', { type: 'error' })
   })
 }
 

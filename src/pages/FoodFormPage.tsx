@@ -7,6 +7,8 @@ import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEY
 import type { Nutrients, FoodUnit } from '../types'
 import DeleteReasonDialog from '../components/DeleteReasonDialog'
 import NumberInput from '../components/NumberInput'
+import UnitSelect from '../components/UnitSelect'
+import { DEFAULT_FOOD_CATEGORIES } from '../types'
 
 export default function FoodFormPage() {
   const { id } = useParams()
@@ -24,6 +26,8 @@ export default function FoodFormPage() {
   const [baseUnit, setBaseUnit] = useState('g')
   const [baseAmount, setBaseAmount] = useState(100)
   const [extraUnits, setExtraUnits] = useState<{ name: string; grams: number }[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [customCategory, setCustomCategory] = useState('')
   const [isCompleteProtein, setIsCompleteProtein] = useState(false)
   const [protein, setProtein] = useState(0)
   const [nutrients, setNutrients] = useState<Nutrients>({ ...EMPTY_NUTRIENTS })
@@ -51,6 +55,8 @@ export default function FoodFormPage() {
         : existing.nutrientsPerUnit.incompleteProtein)
       setNutrients({ ...existing.nutrientsPerUnit })
       if (existing.photoURL) setPhotoPreview(existing.photoURL)
+      // @ts-ignore categories might not be strictly typed yet, but we will save it
+      if (existing.categories) setSelectedCategories(existing.categories)
       const hasMicro = MICRO_KEYS.some((k) => (existing.nutrientsPerUnit[k] || 0) > 0)
       if (hasMicro) setShowMicro(true)
       setSimpleMode(!hasMicro)
@@ -147,6 +153,7 @@ export default function FoodFormPage() {
         unit: baseUnit,
         defaultQuantity: baseAmount,
         units: buildUnits(),
+        categories: selectedCategories,
         isCompleteProtein,
         nutrientsPerUnit: finalNutrients,
         createdBy: user.uid,
@@ -233,13 +240,11 @@ export default function FoodFormPage() {
               step="any"
               className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <input
-              type="text"
+            <UnitSelect
               value={baseUnit}
-              onChange={(e) => setBaseUnit(e.target.value)}
-              required
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="g / ml / 个"
+              onChange={setBaseUnit}
+              className="flex-1"
+              inputClassName="flex-1"
             />
           </div>
           <p className="text-xs text-gray-400 mt-1">下方营养素对应此数量</p>
@@ -264,12 +269,9 @@ export default function FoodFormPage() {
               {extraUnits.map((eu, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <span className="text-sm text-gray-500 shrink-0">1</span>
-                  <input
-                    type="text"
+                  <UnitSelect
                     value={eu.name}
-                    onChange={(e) => updateExtraUnit(index, 'name', e.target.value)}
-                    placeholder="个"
-                    className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    onChange={(val) => updateExtraUnit(index, 'name', val)}
                   />
                   <span className="text-sm text-gray-500 shrink-0">=</span>
                   <NumberInput
@@ -294,6 +296,58 @@ export default function FoodFormPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Categories */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">分类标签</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {Array.from(new Set([...DEFAULT_FOOD_CATEGORIES, ...selectedCategories])).map((cat) => {
+              const isSelected = selectedCategories.includes(cat)
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedCategories(selectedCategories.filter(c => c !== cat))
+                    } else {
+                      setSelectedCategories([...selectedCategories, cat])
+                    }
+                  }}
+                  className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                    isSelected 
+                      ? 'bg-emerald-500 text-white border-emerald-500' 
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-emerald-500'
+                  }`}
+                >
+                  {cat}
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex gap-2 mt-2">
+            <input
+              type="text"
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value)}
+              placeholder="自定义标签..."
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (customCategory.trim() && !selectedCategories.includes(customCategory.trim())) {
+                  setSelectedCategories([...selectedCategories, customCategory.trim()])
+                  setCustomCategory('')
+                }
+              }}
+              disabled={!customCategory.trim()}
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-50"
+            >
+              + 添加
+            </button>
+          </div>
         </div>
 
         {/* Macro nutrients */}

@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { ref, deleteObject } from 'firebase/storage'
 import { db, storage } from '../lib/firebase'
-import { compressImage } from '../lib/storage'
+import { compressImage, uploadPhotoResumable } from '../lib/storage'
 import { formatDate } from '../lib/utils'
 import type { Nutrients } from '../types'
 
@@ -31,8 +31,8 @@ export interface AiTask {
 
 interface AiTaskState {
   tasks: AiTask[]
-  startFoodTask: (userId: string, photoFile: File, fcmToken: string | null, description?: string) => Promise<void>
-  startQuickTask: (userId: string, photoFile: File, fcmToken: string | null, description?: string, targetDate?: string) => Promise<void>
+  startFoodTask: (userId: string, photoFile: File, fcmToken: string | null, description?: string, onProgress?: (p: number) => void) => Promise<void>
+  startQuickTask: (userId: string, photoFile: File, fcmToken: string | null, description?: string, targetDate?: string, onProgress?: (p: number) => void) => Promise<void>
   dismissTask: (id: string, keepPhoto?: boolean) => void
 }
 
@@ -70,14 +70,12 @@ export function unsubscribeAiTasks() {
 export const useAiTaskStore = create<AiTaskState>()((set, get) => ({
   tasks: [],
 
-  startFoodTask: async (userId, photoFile, fcmToken, description) => {
+  startFoodTask: async (userId, photoFile, fcmToken, description, onProgress) => {
     const id = crypto.randomUUID()
     const storagePath = `ai-tasks/${id}.jpg`
 
     const compressed = await compressImage(photoFile, 800)
-    const storageRef = ref(storage, storagePath)
-    await uploadBytes(storageRef, compressed)
-    const photoDownloadURL = await getDownloadURL(storageRef)
+    const photoDownloadURL = await uploadPhotoResumable(compressed, storagePath, onProgress)
 
     // Create Firestore doc — triggers the Cloud Function
     await setDoc(doc(db, 'aiTasks', id), {
@@ -93,15 +91,13 @@ export const useAiTaskStore = create<AiTaskState>()((set, get) => ({
     })
   },
 
-  startQuickTask: async (userId, photoFile, fcmToken, description, targetDate) => {
+  startQuickTask: async (userId, photoFile, fcmToken, description, targetDate, onProgress) => {
     const id = crypto.randomUUID()
     const storagePath = `ai-tasks/${id}.jpg`
     const date = targetDate ?? formatDate(new Date())
 
     const compressed = await compressImage(photoFile, 800)
-    const storageRef = ref(storage, storagePath)
-    await uploadBytes(storageRef, compressed)
-    const photoDownloadURL = await getDownloadURL(storageRef)
+    const photoDownloadURL = await uploadPhotoResumable(compressed, storagePath, onProgress)
 
     await setDoc(doc(db, 'aiTasks', id), {
       type: 'quick',

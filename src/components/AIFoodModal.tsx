@@ -21,6 +21,7 @@ export default function AIFoodModal({ onClose }: Props) {
   const [description, setDescription] = useState('')
   const [error, setError] = useState('')
   const [starting, setStarting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   const handlePhoto = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -46,7 +47,7 @@ export default function AIFoodModal({ onClose }: Props) {
         }
       }
       // Start background task and close immediately
-      await startFoodTask(user.uid, photoFile, getFCMToken(), description || undefined)
+      await startFoodTask(user.uid, photoFile, getFCMToken(), description || undefined, (p) => setUploadProgress(p))
       onClose()
     } catch (err) {
       setError('启动失败，请重试')
@@ -97,6 +98,21 @@ export default function AIFoodModal({ onClose }: Props) {
 
           {error && (
             <div className="text-red-500 text-sm bg-red-50 rounded-lg p-3">{error}</div>
+          )}
+
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-emerald-600 font-medium">
+                <span>上传中...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="h-2 bg-emerald-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-emerald-500 transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
           )}
 
           <button

@@ -15,6 +15,7 @@ import { db } from '../lib/firebase'
 import { cleanForFirestore } from '../lib/utils'
 import { deletePhoto } from '../lib/storage'
 import type { Meal } from '../types'
+import { useToastStore } from './toastStore'
 
 interface MealState {
   meals: Meal[]
@@ -77,6 +78,7 @@ export function subscribeMeals(userId: string) {
     useMealStore.setState({ meals, loading: false })
   }, (err) => {
     console.error('subscribeMeals error:', err)
+    useToastStore.getState().addToast('套餐数据同步受阻', { type: 'error' })
     useMealStore.setState({ loading: false })
   })
 }

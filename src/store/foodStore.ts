@@ -12,6 +12,7 @@ import {
 import { db } from '../lib/firebase'
 import { cleanForFirestore } from '../lib/utils'
 import type { Food } from '../types'
+import { useToastStore } from './toastStore'
 
 interface FoodState {
   foods: Food[]
@@ -61,6 +62,7 @@ export function subscribeFoods() {
     const foods = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Food))
     useFoodStore.setState({ foods, loading: false })
   }, () => {
+    useToastStore.getState().addToast('食物库数据同步受阻', { type: 'error' })
     useFoodStore.setState({ loading: false })
   })
 }
