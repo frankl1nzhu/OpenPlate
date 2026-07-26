@@ -305,25 +305,47 @@ export default function FoodFormPage() {
           <div className="flex flex-wrap gap-2 mb-2">
             {Array.from(new Set([...DEFAULT_FOOD_CATEGORIES, ...selectedCategories])).map((cat) => {
               const isSelected = selectedCategories.includes(cat)
+              const isCustom = !DEFAULT_FOOD_CATEGORIES.includes(cat)
               return (
-                <button
+                <div
                   key={cat}
-                  type="button"
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedCategories(selectedCategories.filter(c => c !== cat))
-                    } else {
-                      setSelectedCategories([...selectedCategories, cat])
-                    }
-                  }}
-                  className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                    isSelected 
-                      ? 'bg-emerald-500 text-white border-emerald-500' 
+                  className={`inline-flex items-center gap-1 px-3 py-1 text-sm rounded-full border transition-colors ${
+                    isSelected
+                      ? 'bg-emerald-500 text-white border-emerald-500'
                       : 'bg-white text-gray-600 border-gray-300 hover:border-emerald-500'
                   }`}
                 >
-                  {cat}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedCategories(selectedCategories.filter(c => c !== cat))
+                      } else {
+                        setSelectedCategories([...selectedCategories, cat])
+                      }
+                    }}
+                    className="focus:outline-none"
+                  >
+                    {cat}
+                  </button>
+                  {isAdmin && isCustom && (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        if (window.confirm(`确定彻底删除分类标签「${cat}」吗？`)) {
+                          await useFoodStore.getState().deleteCategoryTag(cat)
+                          setSelectedCategories(selectedCategories.filter(c => c !== cat))
+                          useToastStore.getState().addToast(`已删除标签「${cat}」`, { type: 'success' })
+                        }
+                      }}
+                      className="ml-1 hover:text-red-300 font-bold text-xs"
+                      title="删除标签"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               )
             })}
           </div>

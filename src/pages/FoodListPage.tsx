@@ -7,8 +7,13 @@ import AITaskBanner from '../components/AITaskBanner'
 import type { UserProfile } from '../types'
 import { DEFAULT_FOOD_CATEGORIES } from '../types'
 
+import { useAuthStore } from '../store/authStore'
+import { useToastStore } from '../store/toastStore'
+
 export default function FoodListPage() {
-  const { foods, loading } = useFoodStore()
+  const { foods, loading, deleteCategoryTag } = useFoodStore()
+  const isAdmin = useAuthStore((s) => s.isAdmin)
+  const addToast = useToastStore((s) => s.addToast)
   const [search, setSearch] = useState('')
   const [showAIModal, setShowAIModal] = useState(false)
   const [creatorProfiles, setCreatorProfiles] = useState<Record<string, UserProfile>>({})
@@ -93,19 +98,46 @@ export default function FoodListPage() {
 
         {/* Categories Bar */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {allCategories.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setSelectedCategory(tag)}
-              className={`px-3 py-1 text-xs rounded-full font-medium shrink-0 transition-colors ${
-                selectedCategory === tag
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
+          {allCategories.map((tag) => {
+            const isCustomTag = tag !== '全部' && !DEFAULT_FOOD_CATEGORIES.includes(tag)
+            const isSelected = selectedCategory === tag
+
+            return (
+              <div
+                key={tag}
+                className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full font-medium shrink-0 transition-colors ${
+                  isSelected
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory(tag)}
+                  className="focus:outline-none"
+                >
+                  {tag}
+                </button>
+                {isAdmin && isCustomTag && (
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      if (window.confirm(`确定彻底删除分类标签「${tag}」吗？`)) {
+                        await deleteCategoryTag(tag)
+                        if (selectedCategory === tag) setSelectedCategory('全部')
+                        addToast(`标签「${tag}」已删除`, { type: 'success' })
+                      }
+                    }}
+                    className="ml-0.5 hover:text-red-300 font-bold px-0.5 text-xs"
+                    title="管理员删除标签"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 

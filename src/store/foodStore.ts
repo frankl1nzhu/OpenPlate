@@ -21,6 +21,7 @@ interface FoodState {
   updateFood: (id: string, data: Partial<Food>) => Promise<void>
   requestDelete: (foodId: string, foodName: string, userId: string, reason: string) => Promise<void>
   requestEdit: (foodId: string, foodName: string, userId: string, proposedData: Partial<Food>) => Promise<void>
+  deleteCategoryTag: (tag: string) => Promise<void>
 }
 
 let unsubscribe: (() => void) | null = null
@@ -62,6 +63,16 @@ export const useFoodStore = create<FoodState>()(
           requestedAt: Date.now(),
           status: 'pending',
         })
+      },
+
+      deleteCategoryTag: async (tag: string) => {
+        const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(tag))
+        await Promise.all(
+          foodsToUpdate.map((f) => {
+            const newCats = (f.categories || []).filter((c) => c !== tag)
+            return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
+          })
+        )
       },
     }),
     { name: 'openplate-foods', partialize: (state) => ({ foods: state.foods }) },
