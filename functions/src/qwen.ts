@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import {
   ALL_NUTRIENT_KEYS,
   EMPTY_NUTRIENTS,
@@ -13,36 +14,27 @@ export async function callQwenVision(
   imageBase64: string,
   prompt: string,
 ): Promise<LLMFoodResult> {
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: imageBase64 } },
-            { type: "text", text: prompt },
-          ],
-        },
-      ],
-      temperature: 0.3,
-    }),
+  const client = new OpenAI({
+    apiKey: apiKey,
+    baseURL: BASE_URL,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM API error: ${response.status} ${errorText}`);
-  }
+  const completion = await client.chat.completions.create({
+    model: MODEL,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: imageBase64 } },
+          { type: "text", text: prompt },
+        ],
+      },
+    ],
+    temperature: 0.3,
+    enable_thinking: true,
+  } as any);
 
-  const data = await response.json() as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = data.choices?.[0]?.message?.content || "";
+  const content = completion.choices?.[0]?.message?.content || "";
 
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
