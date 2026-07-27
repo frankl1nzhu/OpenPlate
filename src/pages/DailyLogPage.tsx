@@ -39,13 +39,16 @@ export default function DailyLogPage() {
     if (!user) return
     setPendingDeletes(prev => new Set(prev).add(entryId))
     
-    const timerId = setTimeout(() => {
-      removeEntry(user.uid, entryId)
-      setPendingDeletes(prev => {
-        const next = new Set(prev)
-        next.delete(entryId)
-        return next
-      })
+    const timerId = setTimeout(async () => {
+      try {
+        await removeEntry(user.uid, entryId)
+      } finally {
+        setPendingDeletes(prev => {
+          const next = new Set(prev)
+          next.delete(entryId)
+          return next
+        })
+      }
     }, 6500)
     
     addToast(`已删除「${entryName}」`, {
@@ -67,13 +70,16 @@ export default function DailyLogPage() {
     if (!user) return
     setPendingDeletes(prev => new Set(prev).add(exerciseId))
     
-    const timerId = setTimeout(() => {
-      removeExercise(user.uid, exerciseId)
-      setPendingDeletes(prev => {
-        const next = new Set(prev)
-        next.delete(exerciseId)
-        return next
-      })
+    const timerId = setTimeout(async () => {
+      try {
+        await removeExercise(user.uid, exerciseId)
+      } finally {
+        setPendingDeletes(prev => {
+          const next = new Set(prev)
+          next.delete(exerciseId)
+          return next
+        })
+      }
     }, 6500)
     
     addToast(`已删除「${exerciseName}」`, {

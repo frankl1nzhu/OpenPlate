@@ -105,24 +105,30 @@ export const useDailyLogStore = create<DailyLogState>()(
         const docId = `${userId}_${date}`
         const ref = doc(db, 'dailyLogs', docId)
 
-        let updatedEntries: LogEntry[] = []
-
-        await runTransaction(db, async (tx) => {
-          const snap = await tx.get(ref)
-          const existing = snap.exists() ? snap.data() : {}
-          const filtered = (existing.entries ?? []).filter((e: LogEntry) => e.id !== entryId)
-          updatedEntries = normalizeMealIndices(filtered)
-          tx.set(ref, {
-            userId,
-            date,
-            entries: updatedEntries,
-            exercises: existing.exercises ?? [],
-          })
-        })
-
-        // Optimistic local update
         const current = get().currentLog
+        const filtered = (current?.entries ?? []).filter((e) => e.id !== entryId)
+        const updatedEntries = normalizeMealIndices(filtered)
+
+        // Optimistic local update FIRST
         set({ currentLog: { id: docId, userId, date, entries: updatedEntries, exercises: current?.exercises ?? [] }, loading: false })
+
+        try {
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(ref)
+            const existing = snap.exists() ? snap.data() : {}
+            const txFiltered = (existing.entries ?? []).filter((e: LogEntry) => e.id !== entryId)
+            const txUpdated = normalizeMealIndices(txFiltered)
+            tx.set(ref, {
+              userId,
+              date,
+              entries: txUpdated,
+              exercises: existing.exercises ?? [],
+            })
+          })
+        } catch (err) {
+          console.error('removeEntry error:', err)
+          if (current) set({ currentLog: current })
+        }
       },
 
       addExercise: async (userId, exercise) => {
@@ -153,21 +159,27 @@ export const useDailyLogStore = create<DailyLogState>()(
         const docId = `${userId}_${date}`
         const ref = doc(db, 'dailyLogs', docId)
 
-        await runTransaction(db, async (tx) => {
-          const snap = await tx.get(ref)
-          const existing = snap.exists() ? snap.data() : {}
-          tx.set(ref, {
-            userId,
-            date,
-            entries: existing.entries ?? [],
-            exercises: (existing.exercises ?? []).filter((e: ExerciseEntry) => e.id !== exerciseId),
-          })
-        })
-
-        // Optimistic local update
         const current = get().currentLog
-        const exercises = (current?.exercises ?? []).filter((e) => e.id !== exerciseId)
-        set({ currentLog: { id: docId, userId, date, entries: current?.entries ?? [], exercises }, loading: false })
+        const updatedExercises = (current?.exercises ?? []).filter((e) => e.id !== exerciseId)
+
+        // Optimistic local update FIRST
+        set({ currentLog: { id: docId, userId, date, entries: current?.entries ?? [], exercises: updatedExercises }, loading: false })
+
+        try {
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(ref)
+            const existing = snap.exists() ? snap.data() : {}
+            tx.set(ref, {
+              userId,
+              date,
+              entries: existing.entries ?? [],
+              exercises: (existing.exercises ?? []).filter((e: ExerciseEntry) => e.id !== exerciseId),
+            })
+          })
+        } catch (err) {
+          console.error('removeExercise error:', err)
+          if (current) set({ currentLog: current })
+        }
       },
 
       copyLogToDate: async (userId, sourceDate, targetDate) => {
