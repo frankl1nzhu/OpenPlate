@@ -1,4 +1,4 @@
-import type { Nutrients, Food, FoodUnit } from '../types'
+import type { Nutrients, Food, FoodUnit, LogEntry } from '../types'
 import { ALL_NUTRIENT_KEYS, EMPTY_NUTRIENTS } from '../types'
 
 export function multiplyNutrients(nutrients: Nutrients, multiplier: number): Nutrients {
@@ -55,3 +55,19 @@ export function calculateFoodNutrients(food: Food, quantity: number, unitName?: 
   // Fallback: old multiplier system (quantity is a multiplier of the base amount)
   return multiplyNutrients(food.nutrientsPerUnit, quantity)
 }
+
+// Normalize mealIndex values so remaining meal groups are sequentially numbered 1, 2, 3...
+export function normalizeMealIndices(entries: LogEntry[]): LogEntry[] {
+  const indexMap = new Map<number, number>()
+  let counter = 1
+  return entries.map((entry, idx) => {
+    const rawMealIndex = entry.mealIndex ?? (idx + 1)
+    if (!indexMap.has(rawMealIndex)) {
+      indexMap.set(rawMealIndex, counter++)
+    }
+    const newMealIndex = indexMap.get(rawMealIndex)!
+    if (entry.mealIndex === newMealIndex) return entry
+    return { ...entry, mealIndex: newMealIndex }
+  })
+}
+

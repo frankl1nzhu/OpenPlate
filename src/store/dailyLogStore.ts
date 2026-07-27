@@ -7,7 +7,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { DailyLog, LogEntry, ExerciseEntry } from '../types'
-import { formatDate } from '../lib/utils'
+import { formatDate, normalizeMealIndices } from '../lib/utils'
 import { useToastStore } from './toastStore'
 
 interface DailyLogState {
@@ -105,21 +105,24 @@ export const useDailyLogStore = create<DailyLogState>()(
         const docId = `${userId}_${date}`
         const ref = doc(db, 'dailyLogs', docId)
 
+        let updatedEntries: LogEntry[] = []
+
         await runTransaction(db, async (tx) => {
           const snap = await tx.get(ref)
           const existing = snap.exists() ? snap.data() : {}
+          const filtered = (existing.entries ?? []).filter((e: LogEntry) => e.id !== entryId)
+          updatedEntries = normalizeMealIndices(filtered)
           tx.set(ref, {
             userId,
             date,
-            entries: (existing.entries ?? []).filter((e: LogEntry) => e.id !== entryId),
+            entries: updatedEntries,
             exercises: existing.exercises ?? [],
           })
         })
 
         // Optimistic local update
         const current = get().currentLog
-        const entries = (current?.entries ?? []).filter((e) => e.id !== entryId)
-        set({ currentLog: { id: docId, userId, date, entries, exercises: current?.exercises ?? [] }, loading: false })
+        set({ currentLog: { id: docId, userId, date, entries: updatedEntries, exercises: current?.exercises ?? [] }, loading: false })
       },
 
       addExercise: async (userId, exercise) => {

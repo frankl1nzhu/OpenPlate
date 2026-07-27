@@ -367,12 +367,12 @@ export default function DailyLogPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {mealGroups.map((group) => {
+            {mealGroups.map((group, groupIdx) => {
               const mealCalories = group.entries.reduce((total, entry) => total + entry.nutrients.calories, 0)
               return (
                 <section key={group.mealIndex} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                   <div className="px-3 py-2 flex items-center justify-between bg-emerald-50 border-b border-emerald-100">
-                    <h4 className="text-sm font-medium text-emerald-800">{getMealTitle(group.mealIndex)}</h4>
+                    <h4 className="text-sm font-medium text-emerald-800">{getMealTitle(groupIdx + 1)}</h4>
                     <span className="text-xs text-emerald-600">{Math.round(mealCalories)} kcal · {group.entries.length} 项</span>
                   </div>
                   {group.entries.map((entry) => {

@@ -166,10 +166,12 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
     if (!user || drafts.length === 0) return
     setSubmitting(true)
     try {
-      const nextMealIndex = (currentLog?.entries ?? []).reduce(
-        (max, entry, index) => Math.max(max, entry.mealIndex ?? index + 1),
-        0,
-      ) + 1
+      const existingMealGroups = (currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => {
+        const mIdx = entry.mealIndex ?? (index + 1)
+        if (!acc.includes(mIdx)) acc.push(mIdx)
+        return acc
+      }, [])
+      const nextMealIndex = existingMealGroups.length + 1
       const timestamp = Date.now()
       const entries = await Promise.all(drafts.map(async (draft, index) => {
         let photoURL = draft.photoURL
@@ -373,7 +375,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
             <div className="px-4 py-3 border-t border-gray-100 shrink-0 max-h-56 overflow-y-auto">
               <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium text-gray-700">本顿已选 {drafts.length} 项</span><span className="text-xs text-emerald-600">{Math.round(sumNutrients(...drafts.map(calculateDraftNutrients)).calories)} kcal</span></div>
               {drafts.length > 0 && <div className="space-y-2 mb-3">{drafts.map((draft) => { const food = draft.type === 'food' ? foods.find((item) => item.id === draft.refId) : undefined; const units = food ? getFoodUnits(food) : []; return <div key={draft.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1.5"><span className="text-sm flex-1 truncate">{draft.name}</span><NumberInput value={draft.quantity} onValueChange={(quantity) => updateDraft(draft.id, { quantity })} min={0} step="any" className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center" />{draft.type === 'food' && units.length > 1 ? <select value={draft.unit} onChange={(event) => updateDraft(draft.id, { unit: event.target.value, quantity: 1 })} className="max-w-20 px-1 py-1 border border-gray-300 rounded text-sm bg-white">{units.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select> : draft.type === 'quick' ? <UnitSelect value={draft.unit || '份'} onChange={(unit) => updateDraft(draft.id, { unit })} className="max-w-24" inputClassName="w-16" /> : <span className="text-xs text-gray-400">{draft.type === 'food' ? draft.unit : '份'}</span>}<button type="button" onClick={() => setDrafts((current) => current.filter((item) => item.id !== draft.id))} className="text-gray-400 p-1">×</button></div> })}</div>}
-              <button onClick={handleAddMeal} disabled={submitting || drafts.length === 0} className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50">{submitting ? '添加中...' : `确认添加第 ${(currentLog?.entries ?? []).reduce((max, entry, index) => Math.max(max, entry.mealIndex ?? index + 1), 0) + 1} 顿`}</button>
+              <button onClick={handleAddMeal} disabled={submitting || drafts.length === 0} className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50">{submitting ? '添加中...' : `确认添加第 ${(currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => { const mIdx = entry.mealIndex ?? (index + 1); if (!acc.includes(mIdx)) acc.push(mIdx); return acc }, []).length + 1} 顿`}</button>
             </div>
           </>
         )}
