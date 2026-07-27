@@ -8,7 +8,7 @@ import { useFitnessGoalStore } from '../store/fitnessGoalStore'
 import { useToastStore } from '../store/toastStore'
 import { sumNutrients } from '../lib/utils'
 import { adjustTargetsForExercise } from '../lib/nutrition'
-import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS } from '../types'
+import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS, DEFAULT_HOME_NUTRIENT_KEYS } from '../types'
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
 import AIQuickRecordModal from '../components/AIQuickRecordModal'
@@ -170,10 +170,10 @@ export default function DailyLogPage() {
   const isToday = selectedDate === new Date().toISOString().split('T')[0]
 
   const isActive = (key: keyof Nutrients) => {
-    const inSelected = homeNutrientKeys.length > 0
-      ? homeNutrientKeys.includes(key)
-      : MACRO_KEYS.includes(key)
-    return inSelected && (targets[key] || 0) > 0
+    const selectedKeys = homeNutrientKeys.length > 0
+      ? homeNutrientKeys
+      : DEFAULT_HOME_NUTRIENT_KEYS
+    return selectedKeys.includes(key)
   }
 
   const getRingColor = (actual: number, target: number) => {

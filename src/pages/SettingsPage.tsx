@@ -5,7 +5,7 @@ import { useFoodStore } from '../store/foodStore'
 import { useMealStore } from '../store/mealStore'
 import { useUserProfileStore } from '../store/userProfileStore'
 import { useFitnessGoalStore } from '../store/fitnessGoalStore'
-import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, ALL_NUTRIENT_KEYS, ACTIVITY_LEVEL_LABELS, FITNESS_GOAL_LABELS } from '../types'
+import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, ALL_NUTRIENT_KEYS, ACTIVITY_LEVEL_LABELS, FITNESS_GOAL_LABELS, DEFAULT_HOME_NUTRIENT_KEYS } from '../types'
 import type { Nutrients, FitnessGoalType } from '../types'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
@@ -303,7 +303,7 @@ export default function SettingsPage() {
   const toggleHomeNutrient = (key: keyof Nutrients) => {
     const current = homeNutrientKeys.length > 0
       ? homeNutrientKeys
-      : MACRO_KEYS.filter((k) => (targets[k] || 0) > 0)
+      : DEFAULT_HOME_NUTRIENT_KEYS
     if (current.includes(key)) {
       setHomeNutrientKeys(current.filter((k) => k !== key))
     } else {
@@ -312,10 +312,10 @@ export default function SettingsPage() {
   }
 
   const isNutrientOnHome = (key: keyof Nutrients) => {
-    if (homeNutrientKeys.length === 0) {
-      return MACRO_KEYS.includes(key) && (targets[key] || 0) > 0
-    }
-    return homeNutrientKeys.includes(key)
+    const current = homeNutrientKeys.length > 0
+      ? homeNutrientKeys
+      : DEFAULT_HOME_NUTRIENT_KEYS
+    return current.includes(key)
   }
 
   if (loading) {

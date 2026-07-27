@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { DailyGoal, Nutrients } from '../types'
-import { EMPTY_NUTRIENTS } from '../types'
+import { EMPTY_NUTRIENTS, DEFAULT_HOME_NUTRIENT_KEYS } from '../types'
 import { useToastStore } from './toastStore'
 
 interface GoalState {
@@ -21,7 +21,7 @@ export const useGoalStore = create<GoalState>()(
     (_set, _get) => ({
       goal: null as DailyGoal | null,
       loading: true,
-      homeNutrientKeys: [] as (keyof Nutrients)[],
+      homeNutrientKeys: DEFAULT_HOME_NUTRIENT_KEYS,
 
       setGoal: async (userId: string, targets: Nutrients) => {
         await setDoc(doc(db, 'dailyGoals', userId), { userId, targets })

@@ -82,6 +82,16 @@ export const MACRO_KEYS: (keyof Nutrients)[] = [
   'calories', 'carbs', 'protein', 'completeProtein', 'incompleteProtein', 'fat', 'saturatedFat', 'monounsaturatedFat', 'polyunsaturatedFat', 'fiber', 'sodium',
 ]
 
+// 默认首页展示项：热量，碳水，蛋白质，脂肪，膳食纤维，钠
+export const DEFAULT_HOME_NUTRIENT_KEYS: (keyof Nutrients)[] = [
+  'calories',
+  'carbs',
+  'protein',
+  'fat',
+  'fiber',
+  'sodium',
+]
+
 // 微量元素 keys
 export const MICRO_KEYS: (keyof Nutrients)[] = [
   'vitaminA', 'vitaminC', 'vitaminD', 'vitaminE', 'vitaminB1', 'vitaminB2',
