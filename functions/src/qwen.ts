@@ -7,7 +7,7 @@ import {
 } from "./types";
 
 const BASE_URL = "https://ws-bwhyg6lccvwumx18.cn-beijing.maas.aliyuncs.com/compatible-mode/v1";
-const MODEL = "qwen3.7-max";
+const MODEL = "qwen-vl-max";
 
 export async function callQwenVision(
   apiKey: string,
@@ -31,14 +31,13 @@ export async function callQwenVision(
       },
     ],
     temperature: 0.3,
-    enable_thinking: true,
-  } as any);
+  });
 
   const content = completion.choices?.[0]?.message?.content || "";
 
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error("LLM返回格式异常，无法解析");
+    throw new Error("LLM返回格式异常，无法解析: " + content);
   }
 
   const parsed = JSON.parse(jsonMatch[0]) as {
