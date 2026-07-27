@@ -5,7 +5,7 @@ import {
   type Nutrients,
 } from "./types";
 
-const BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+const BASE_URL = "https://ws-bwhyg6lccvwumx18.cn-beijing.maas.aliyuncs.com/compatible-mode/v1";
 const MODEL = "qwen3.7-max";
 
 export async function callQwenVision(
