@@ -31,7 +31,7 @@
 | Routing | React Router v7 |
 | PWA | vite-plugin-pwa + Workbox service workers |
 | Backend | Firebase (Auth, Firestore, Storage, Cloud Functions v2) |
-| AI | Alibaba Qwen Vision (`qwen3.6-flash`) via Cloud Functions |
+| AI | Alibaba Qwen Vision (`qwen3.7-max`) via Cloud Functions |
 | Notifications | Firebase Cloud Messaging (FCM) |
 
 ---

@@ -6,7 +6,7 @@ import {
 } from "./types";
 
 const BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
-const MODEL = "qwen3.6-flash";
+const MODEL = "qwen3.7-max";
 
 export async function callQwenVision(
   apiKey: string,

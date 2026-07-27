@@ -31,7 +31,7 @@
 | 路由     | React Router v7                                              |
 | PWA      | vite-plugin-pwa + Workbox Service Workers                    |
 | 后端     | Firebase（Auth、Firestore、Storage、Cloud Functions v2）     |
-| AI       | 阿里云通义千问视觉模型（`qwen3.6-flash`）via Cloud Functions |
+| AI       | 阿里云通义千问视觉模型（`qwen3.7-max`）via Cloud Functions |
 | 推送通知 | Firebase Cloud Messaging（FCM）                              |
 
 ---
