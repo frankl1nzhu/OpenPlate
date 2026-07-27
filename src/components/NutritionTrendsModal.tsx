@@ -126,9 +126,8 @@ export default function NutritionTrendsModal({ onClose }: Props) {
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                    period === p ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'
-                  }`}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${period === p ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'
+                    }`}
                 >
                   {p === '7days' ? '近7天' : '近30天'}
                 </button>
@@ -141,11 +140,10 @@ export default function NutritionTrendsModal({ onClose }: Props) {
                 <button
                   key={m}
                   onClick={() => setMetric(m)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors ${
-                    metric === m
-                      ? 'bg-emerald-500 text-white border-emerald-500'
-                      : 'border-gray-200 text-gray-600'
-                  }`}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors ${metric === m
+                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'border-gray-200 text-gray-600'
+                    }`}
                 >
                   {NUTRIENT_LABELS[m]}
                 </button>
@@ -157,10 +155,10 @@ export default function NutritionTrendsModal({ onClose }: Props) {
           <div className="h-6 flex items-center justify-between text-xs text-gray-500 px-1">
             <span>
               {hoveredData
-                ? `${hoveredData.date}: ${hoveredData.val} / 目标 ${hoveredData.target} ${NUTRIENT_UNITS[metric]}`
-                : '点击/触摸柱状图查看具体数值'}
+                ? `${hoveredData.date}：${hoveredData.val} / 目标 ${hoveredData.target} ${NUTRIENT_UNITS[metric]}`
+                : '点击柱状图查看具体数值'}
             </span>
-            <span className="text-emerald-600 font-medium">均值目标: {avgTarget} {NUTRIENT_UNITS[metric]}</span>
+            <span className="text-emerald-600 font-medium">均值目标：{avgTarget} {NUTRIENT_UNITS[metric]}</span>
           </div>
 
           {/* SVG Bar Chart */}

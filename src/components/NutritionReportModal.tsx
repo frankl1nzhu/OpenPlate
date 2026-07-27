@@ -154,9 +154,8 @@ export default function NutritionReportModal({ onClose }: Props) {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  period === p ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'
-                }`}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${period === p ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'
+                  }`}
               >
                 {p === '7days' ? '近 7 天报告' : '近 30 天报告'}
               </button>
@@ -172,8 +171,8 @@ export default function NutritionReportModal({ onClose }: Props) {
               {/* Executive Summary */}
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 space-y-1">
                 <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
-                  <span>📊 综合评估结论 (含运动及健身目标调整)</span>
-                  <span className="text-emerald-600 font-normal">({totalDaysWithLogs}/{daysCount} 天有记录)</span>
+                  <span>📊 综合评估结论</span>
+                  <span className="text-emerald-600 font-normal">({totalDaysWithLogs}/{daysCount} 天)</span>
                 </div>
                 <p className="text-xs text-emerald-700 leading-relaxed">
                   {warnings.length > 0
@@ -195,11 +194,10 @@ export default function NutritionReportModal({ onClose }: Props) {
                   <div key={item.label} className="bg-gray-50 rounded-xl p-3 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">{item.label}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        item.status.type === 'good' ? 'bg-emerald-100 text-emerald-700' :
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${item.status.type === 'good' ? 'bg-emerald-100 text-emerald-700' :
                         item.status.type === 'warning' ? 'bg-amber-100 text-amber-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
+                          'bg-red-100 text-red-700'
+                        }`}>
                         {item.status.text}
                       </span>
                     </div>
