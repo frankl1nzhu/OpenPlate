@@ -26,14 +26,14 @@ export const useCategoryStore = create<CategoryState>()(
         const trimmed = name.trim()
         if (!trimmed || get().categories.includes(trimmed)) return
         const next = [...get().categories, trimmed]
+        // Optimistic local update
         set({ categories: next })
-        useToastStore.getState().addToast(`分类「${trimmed}」已创建`, { type: 'success' })
-
-        // Sync with Firestore background
         try {
           await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
+          useToastStore.getState().addToast(`分类「${trimmed}」已创建`, { type: 'success' })
         } catch (err) {
-          console.warn('Firestore settings/categories write skipped or blocked:', err)
+          console.error('addCategory error:', err)
+          useToastStore.getState().addToast('创建分类失败，请重试', { type: 'error' })
         }
       },
 
@@ -46,49 +46,49 @@ export const useCategoryStore = create<CategoryState>()(
         }
 
         const next = get().categories.map((c) => (c === oldName ? trimmed : c))
+        // Optimistic local update
         set({ categories: next })
-        useToastStore.getState().addToast(`分类已修改为「${trimmed}」`, { type: 'success' })
-
-        // Sync background
         try {
           await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
-        } catch (err) {
-          console.warn('Firestore settings/categories sync skipped:', err)
-        }
 
-        // Batch update foods in background
-        const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(oldName))
-        if (foodsToUpdate.length > 0) {
-          Promise.allSettled(
-            foodsToUpdate.map((f) => {
-              const newCats = (f.categories || []).map((c) => (c === oldName ? trimmed : c))
-              return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
-            }),
-          ).catch(console.warn)
+          // Batch update all foods containing oldName
+          const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(oldName))
+          if (foodsToUpdate.length > 0) {
+            await Promise.allSettled(
+              foodsToUpdate.map((f) => {
+                const newCats = (f.categories || []).map((c) => (c === oldName ? trimmed : c))
+                return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
+              }),
+            )
+          }
+          useToastStore.getState().addToast(`分类已修改为「${trimmed}」`, { type: 'success' })
+        } catch (err) {
+          console.error('renameCategory error:', err)
+          useToastStore.getState().addToast('修改分类失败，请重试', { type: 'error' })
         }
       },
 
       deleteCategory: async (name: string) => {
         const next = get().categories.filter((c) => c !== name)
+        // Optimistic local update
         set({ categories: next })
-        useToastStore.getState().addToast(`分类「${name}」已删除`, { type: 'success' })
-
-        // Sync background
         try {
           await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
-        } catch (err) {
-          console.warn('Firestore settings/categories sync skipped:', err)
-        }
 
-        // Batch remove category from foods in background
-        const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(name))
-        if (foodsToUpdate.length > 0) {
-          Promise.allSettled(
-            foodsToUpdate.map((f) => {
-              const newCats = (f.categories || []).filter((c) => c !== name)
-              return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
-            }),
-          ).catch(console.warn)
+          // Batch remove category from all foods
+          const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(name))
+          if (foodsToUpdate.length > 0) {
+            await Promise.allSettled(
+              foodsToUpdate.map((f) => {
+                const newCats = (f.categories || []).filter((c) => c !== name)
+                return updateDoc(doc(db, 'foods', f.id), { categories: newCats })
+              }),
+            )
+          }
+          useToastStore.getState().addToast(`分类「${name}」已删除`, { type: 'success' })
+        } catch (err) {
+          console.error('deleteCategory error:', err)
+          useToastStore.getState().addToast('删除分类失败，请重试', { type: 'error' })
         }
       },
     }),
@@ -107,10 +107,14 @@ export function subscribeCategories() {
     (snapshot) => {
       if (snapshot.exists() && Array.isArray(snapshot.data().categories)) {
         useCategoryStore.setState({ categories: snapshot.data().categories, loading: false })
+      } else {
+        // Seed default categories doc if missing
+        setDoc(docRef, { categories: DEFAULT_FOOD_CATEGORIES }, { merge: true }).catch(console.error)
+        useCategoryStore.setState({ categories: DEFAULT_FOOD_CATEGORIES, loading: false })
       }
     },
     (err) => {
-      console.warn('subscribeCategories snapshot listener warning:', err)
+      console.error('subscribeCategories error:', err)
       useCategoryStore.setState({ loading: false })
     },
   )
