@@ -7,7 +7,7 @@ import {
 } from "./types";
 
 const BASE_URL = "https://ws-bwhyg6lccvwumx18.cn-beijing.maas.aliyuncs.com/compatible-mode/v1";
-const MODEL = "qwen-vl-max";
+const MODEL = "qwen3.7-max";
 
 export async function callQwenVision(
   apiKey: string,
@@ -31,7 +31,10 @@ export async function callQwenVision(
       },
     ],
     temperature: 0.3,
-  });
+    extra_body: {
+      enable_thinking: true,
+    },
+  } as any);
 
   const content = completion.choices?.[0]?.message?.content || "";
 
