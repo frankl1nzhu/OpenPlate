@@ -3,6 +3,7 @@ import { useFoodStore } from '../store/foodStore'
 import { useMealStore } from '../store/mealStore'
 import { useDailyLogStore } from '../store/dailyLogStore'
 import { useCategoryStore } from '../store/categoryStore'
+import { useGoalStore } from '../store/goalStore'
 import { useAuthStore } from '../store/authStore'
 import { useUserProfileStore } from '../store/userProfileStore'
 import { useToastStore } from '../store/toastStore'
@@ -11,7 +12,7 @@ import { calculateExerciseCalories } from '../lib/nutrition'
 import { uploadPhoto, compressImage } from '../lib/storage'
 import { useScrollLock } from '../hooks/useScrollLock'
 import NumberInput from './NumberInput'
-import { EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS, EXERCISE_TYPE_LABELS, EXERCISE_INTENSITY_LABELS } from '../types'
+import { EMPTY_NUTRIENTS, MACRO_KEYS, MICRO_KEYS, NUTRIENT_LABELS, NUTRIENT_UNITS, EXERCISE_TYPE_LABELS, EXERCISE_INTENSITY_LABELS, DEFAULT_HOME_NUTRIENT_KEYS } from '../types'
 import type { Nutrients, ExerciseType, ExerciseIntensity, Food } from '../types'
 import UnitSelect from './UnitSelect'
 
@@ -41,9 +42,11 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
   const { meals } = useMealStore()
   const { currentLog, addEntries, addExercise, recentFoodIds } = useDailyLogStore()
   const { categories } = useCategoryStore()
+  const { homeNutrientKeys } = useGoalStore()
   const user = useAuthStore((s) => s.user)
   const { profile } = useUserProfileStore()
   const isExerciseMode = defaultTab === 'exercise'
+  const displayNutrientKeys = homeNutrientKeys.length > 0 ? homeNutrientKeys : DEFAULT_HOME_NUTRIENT_KEYS
 
   const recentFoods = recentFoodIds
     .map(id => foods.find(f => f.id === id))
@@ -372,9 +375,28 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
                 </>
               )}
             </div>
-            <div className="px-4 py-3 border-t border-gray-100 shrink-0 max-h-56 overflow-y-auto">
+            <div className="px-4 py-3 border-t border-gray-100 shrink-0 max-h-64 overflow-y-auto">
               <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium text-gray-700">本顿已选 {drafts.length} 项</span><span className="text-xs text-emerald-600">{Math.round(sumNutrients(...drafts.map(calculateDraftNutrients)).calories)} kcal</span></div>
               {drafts.length > 0 && <div className="space-y-2 mb-3">{drafts.map((draft) => { const food = draft.type === 'food' ? foods.find((item) => item.id === draft.refId) : undefined; const units = food ? getFoodUnits(food) : []; return <div key={draft.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1.5"><span className="text-sm flex-1 truncate">{draft.name}</span><NumberInput value={draft.quantity} onValueChange={(quantity) => updateDraft(draft.id, { quantity })} min={0} step="any" className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center" />{draft.type === 'food' && units.length > 1 ? <select value={draft.unit} onChange={(event) => updateDraft(draft.id, { unit: event.target.value, quantity: 1 })} className="max-w-20 px-1 py-1 border border-gray-300 rounded text-sm bg-white">{units.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select> : draft.type === 'quick' ? <UnitSelect value={draft.unit || '份'} onChange={(unit) => updateDraft(draft.id, { unit })} className="max-w-24" inputClassName="w-16" /> : <span className="text-xs text-gray-400">{draft.type === 'food' ? draft.unit : '份'}</span>}<button type="button" onClick={() => setDrafts((current) => current.filter((item) => item.id !== draft.id))} className="text-gray-400 p-1">×</button></div> })}</div>}
+              {drafts.length > 0 && (() => {
+                const totalN = sumNutrients(...drafts.map(calculateDraftNutrients))
+                return (
+                  <div className="mb-3 bg-emerald-50 rounded-lg px-3 py-2">
+                    <div className="text-xs font-medium text-emerald-700 mb-1.5">本顿营养汇总</div>
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+                      {displayNutrientKeys.map((key) => (
+                        <div key={key} className="flex items-baseline justify-between text-xs">
+                          <span className="text-gray-600 truncate">{NUTRIENT_LABELS[key]}</span>
+                          <span className="font-medium text-gray-800 tabular-nums ml-1">
+                            {Math.round(totalN[key] * 10) / 10}
+                            <span className="text-gray-400 font-normal ml-0.5">{NUTRIENT_UNITS[key]}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
               <button onClick={handleAddMeal} disabled={submitting || drafts.length === 0} className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50">{submitting ? '添加中...' : `确认添加第 ${(currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => { const mIdx = entry.mealIndex ?? (index + 1); if (!acc.includes(mIdx)) acc.push(mIdx); return acc }, []).length + 1} 顿`}</button>
             </div>
           </>
