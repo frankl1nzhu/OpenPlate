@@ -6,6 +6,8 @@ export function multiplyNutrients(nutrients: Nutrients, multiplier: number): Nut
   for (const key of ALL_NUTRIENT_KEYS) {
     result[key] = Math.round((nutrients[key] || 0) * multiplier * 10) / 10
   }
+  // protein is a derived total – always recompute from sub-fields
+  result.protein = Math.round((result.completeProtein + result.incompleteProtein) * 10) / 10
   return result
 }
 
@@ -16,6 +18,8 @@ export function sumNutrients(...items: Nutrients[]): Nutrients {
       result[key] += n[key] || 0
     }
   }
+  // protein is a derived total – always recompute from sub-fields
+  result.protein = result.completeProtein + result.incompleteProtein
   return result
 }
 
