@@ -19,6 +19,7 @@ interface DailyLogState {
   addRecentFood: (foodId: string) => void
   addEntry: (userId: string, entry: Omit<LogEntry, 'id'>, date?: string) => Promise<void>
   addEntries: (userId: string, entries: Omit<LogEntry, 'id'>[], date?: string) => Promise<void>
+  updateEntries: (userId: string, updatedEntries: LogEntry[]) => Promise<void>
   removeEntry: (userId: string, entryId: string) => Promise<void>
   addExercise: (userId: string, exercise: Omit<ExerciseEntry, 'id'>) => Promise<void>
   removeExercise: (userId: string, exerciseId: string) => Promise<void>
@@ -98,6 +99,50 @@ export const useDailyLogStore = create<DailyLogState>()(
             get().addRecentFood(entry.refId)
           }
         })
+      },
+
+      updateEntries: async (userId, updatedEntries) => {
+        const date = get().selectedDate
+        const docId = `${userId}_${date}`
+        const ref = doc(db, 'dailyLogs', docId)
+
+        const current = get().currentLog
+        const allEntries = current?.entries ?? []
+        // Replace entries by id with the updated versions
+        const updatedIds = new Set(updatedEntries.map(e => e.id))
+        const merged = allEntries.map(e => {
+          if (updatedIds.has(e.id)) {
+            return updatedEntries.find(u => u.id === e.id)!
+          }
+          return e
+        })
+
+        // Optimistic local update
+        set({ currentLog: { id: docId, userId, date, entries: merged, exercises: current?.exercises ?? [] }, loading: false })
+
+        try {
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(ref)
+            const existing = snap.exists() ? snap.data() : {}
+            const existingEntries: LogEntry[] = existing.entries ?? []
+            const txMerged = existingEntries.map(e => {
+              if (updatedIds.has(e.id)) {
+                return updatedEntries.find(u => u.id === e.id)!
+              }
+              return e
+            })
+            tx.set(ref, {
+              userId,
+              date,
+              entries: txMerged,
+              exercises: existing.exercises ?? [],
+            })
+          })
+        } catch (err) {
+          console.error('updateEntries error:', err)
+          if (current) set({ currentLog: current })
+          throw err
+        }
       },
 
       removeEntry: async (userId, entryId) => {

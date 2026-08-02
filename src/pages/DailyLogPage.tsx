@@ -11,6 +11,7 @@ import { adjustTargetsForExercise } from '../lib/nutrition'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS, MICRO_KEYS, EXERCISE_TYPE_LABELS, FITNESS_GOAL_LABELS, DEFAULT_HOME_NUTRIENT_KEYS } from '../types'
 import type { Nutrients, LogEntry, Food, Meal } from '../types'
 import AddEntryModal from '../components/AddEntryModal'
+import EditMealModal from '../components/EditMealModal'
 import AIQuickRecordModal from '../components/AIQuickRecordModal'
 import AITaskBanner from '../components/AITaskBanner'
 import NutritionReportModal from '../components/NutritionReportModal'
@@ -31,6 +32,7 @@ export default function DailyLogPage() {
   const [showCopyModal, setShowCopyModal] = useState(false)
   const [copyTargetDate, setCopyTargetDate] = useState('')
   const [copying, setCopying] = useState(false)
+  const [editingMeal, setEditingMeal] = useState<{ entries: LogEntry[]; title: string } | null>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
   const addToast = useToastStore((s) => s.addToast)
 
@@ -377,10 +379,19 @@ export default function DailyLogPage() {
               const mealCalories = group.entries.reduce((total, entry) => total + entry.nutrients.calories, 0)
               return (
                 <section key={group.mealIndex} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                  <div className="px-3 py-2 flex items-center justify-between bg-emerald-50 border-b border-emerald-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMeal({ entries: group.entries, title: getMealTitle(groupIdx + 1) })}
+                    className="w-full px-3 py-2 flex items-center justify-between bg-emerald-50 border-b border-emerald-100 hover:bg-emerald-100 transition-colors"
+                  >
                     <h4 className="text-sm font-medium text-emerald-800">{getMealTitle(groupIdx + 1)}</h4>
-                    <span className="text-xs text-emerald-600">{Math.round(mealCalories)} kcal · {group.entries.length} 项</span>
-                  </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-emerald-600">{Math.round(mealCalories)} kcal · {group.entries.length} 项</span>
+                      <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                  </button>
                   {group.entries.map((entry) => {
                     const photo = getEntryPhoto(entry)
                     return (
@@ -439,6 +450,14 @@ export default function DailyLogPage() {
 
       {showAddModal && (
         <AddEntryModal defaultTab={addModalTab} onClose={() => setShowAddModal(false)} />
+      )}
+
+      {editingMeal && (
+        <EditMealModal
+          mealEntries={editingMeal.entries}
+          mealTitle={editingMeal.title}
+          onClose={() => setEditingMeal(null)}
+        />
       )}
 
       {showAIQuickModal && (
