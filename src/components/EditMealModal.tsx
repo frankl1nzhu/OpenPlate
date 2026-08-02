@@ -8,6 +8,7 @@ import { useToastStore } from '../store/toastStore'
 import { sumNutrients, getFoodUnits, calculateFoodNutrients, multiplyNutrients } from '../lib/utils'
 import { useScrollLock } from '../hooks/useScrollLock'
 import NumberInput from './NumberInput'
+import AddEntryModal from './AddEntryModal'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, DEFAULT_HOME_NUTRIENT_KEYS, EMPTY_NUTRIENTS } from '../types'
 import type { LogEntry, Nutrients } from '../types'
 
@@ -34,6 +35,10 @@ export default function EditMealModal({ mealEntries, mealTitle, onClose }: Props
   )
   const [submitting, setSubmitting] = useState(false)
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
+  const [showAddFood, setShowAddFood] = useState(false)
+
+  // Get the mealIndex from existing entries
+  const mealIndex = mealEntries[0]?.mealIndex ?? 1
 
   const activeEntries = editableEntries.filter((e) => !removedIds.has(e.id))
 
@@ -240,6 +245,18 @@ export default function EditMealModal({ mealEntries, mealTitle, onClose }: Props
               )
             })
           )}
+
+          {/* Add food button */}
+          <button
+            type="button"
+            onClick={() => setShowAddFood(true)}
+            className="w-full py-2.5 border-2 border-dashed border-emerald-300 rounded-xl text-emerald-600 text-sm font-medium hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            添加食物
+          </button>
         </div>
 
         {/* Nutrition summary */}
@@ -262,6 +279,16 @@ export default function EditMealModal({ mealEntries, mealTitle, onClose }: Props
           </div>
         )}
       </div>
+
+      {showAddFood && (
+        <AddEntryModal
+          mealIndex={mealIndex}
+          onClose={() => {
+            setShowAddFood(false)
+            onClose() // Close EditMealModal too, entries are in the store
+          }}
+        />
+      )}
     </div>
   )
 }

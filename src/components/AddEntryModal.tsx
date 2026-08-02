@@ -19,6 +19,8 @@ import UnitSelect from './UnitSelect'
 interface Props {
   onClose: () => void
   defaultTab?: 'food' | 'exercise'
+  /** When provided, add entries to this existing meal group instead of creating a new one */
+  mealIndex?: number
 }
 
 type DietTab = 'food' | 'meal' | 'quick'
@@ -36,7 +38,7 @@ type DietDraft = {
   nutrients?: Nutrients
 }
 
-export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
+export default function AddEntryModal({ onClose, defaultTab = 'food', mealIndex: existingMealIndex }: Props) {
   useScrollLock(true)
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
@@ -169,12 +171,14 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
     if (!user || drafts.length === 0) return
     setSubmitting(true)
     try {
-      const existingMealGroups = (currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => {
-        const mIdx = entry.mealIndex ?? (index + 1)
-        if (!acc.includes(mIdx)) acc.push(mIdx)
-        return acc
-      }, [])
-      const nextMealIndex = existingMealGroups.length + 1
+      const targetMealIndex = existingMealIndex ?? (() => {
+        const existingMealGroups = (currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => {
+          const mIdx = entry.mealIndex ?? (index + 1)
+          if (!acc.includes(mIdx)) acc.push(mIdx)
+          return acc
+        }, [])
+        return existingMealGroups.length + 1
+      })()
       const timestamp = Date.now()
       const entries = await Promise.all(drafts.map(async (draft, index) => {
         let photoURL = draft.photoURL
@@ -196,7 +200,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
           ...(draft.unit ? { unit: draft.unit } : {}),
           nutrients: calculateDraftNutrients(draft),
           timestamp: timestamp + index,
-          mealIndex: nextMealIndex,
+          mealIndex: targetMealIndex,
         }
       }))
       await addEntries(user.uid, entries)
@@ -397,7 +401,7 @@ export default function AddEntryModal({ onClose, defaultTab = 'food' }: Props) {
                   </div>
                 )
               })()}
-              <button onClick={handleAddMeal} disabled={submitting || drafts.length === 0} className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50">{submitting ? '添加中...' : `确认添加第 ${(currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => { const mIdx = entry.mealIndex ?? (index + 1); if (!acc.includes(mIdx)) acc.push(mIdx); return acc }, []).length + 1} 顿`}</button>
+              <button onClick={handleAddMeal} disabled={submitting || drafts.length === 0} className="w-full py-2.5 bg-emerald-500 text-white font-medium rounded-lg disabled:opacity-50">{submitting ? '添加中...' : existingMealIndex != null ? '确认添加' : `确认添加第 ${(currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => { const mIdx = entry.mealIndex ?? (index + 1); if (!acc.includes(mIdx)) acc.push(mIdx); return acc }, []).length + 1} 顿`}</button>
             </div>
           </>
         )}
