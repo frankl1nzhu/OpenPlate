@@ -530,6 +530,44 @@ export default function SettingsPage() {
 
       {activeTab === 'goals' && (
         <>
+      {/* Smart recommendation */}
+      <div className="space-y-3 mb-6">
+        <h3 className="text-sm font-bold text-gray-700">推荐每日摄入</h3>
+
+        <button
+          type="button"
+          onClick={handleCalculateRecommendation}
+          className="w-full py-2 bg-blue-500 text-white text-sm font-medium rounded-lg"
+        >
+          计算推荐值
+        </button>
+
+        {recommendedTargets && (
+          <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-100">
+            <h4 className="text-xs font-medium text-gray-500">推荐每日摄入（Mifflin-St Jeor + DRI）</h4>
+            <div className="grid grid-cols-2 gap-1">
+              {MACRO_KEYS.map((key) => (
+                recommendedTargets[key] > 0 && (
+                  <div key={key} className="flex justify-between text-xs">
+                    <span className="text-gray-600">{NUTRIENT_LABELS[key]}</span>
+                    <span className="font-medium">
+                      {Math.round(recommendedTargets[key])} {NUTRIENT_UNITS[key]}
+                    </span>
+                  </div>
+                )
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyRecommendation}
+              className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg mt-2"
+            >
+              应用到每日目标
+            </button>
+          </div>
+        )}
+      </div>
+
           {/* Daily Goals - display/edit mode */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-center justify-between">
@@ -740,43 +778,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Smart recommendation */}
-      <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
-        <h3 className="text-sm font-bold text-gray-700">推荐每日摄入</h3>
-
-        <button
-          type="button"
-          onClick={handleCalculateRecommendation}
-          className="w-full py-2 bg-blue-500 text-white text-sm font-medium rounded-lg"
-        >
-          计算推荐值
-        </button>
-
-        {recommendedTargets && (
-          <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-100">
-            <h4 className="text-xs font-medium text-gray-500">推荐每日摄入（Mifflin-St Jeor + DRI）</h4>
-            <div className="grid grid-cols-2 gap-1">
-              {MACRO_KEYS.map((key) => (
-                recommendedTargets[key] > 0 && (
-                  <div key={key} className="flex justify-between text-xs">
-                    <span className="text-gray-600">{NUTRIENT_LABELS[key]}</span>
-                    <span className="font-medium">
-                      {Math.round(recommendedTargets[key])} {NUTRIENT_UNITS[key]}
-                    </span>
-                  </div>
-                )
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={handleApplyRecommendation}
-              className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg mt-2"
-            >
-              应用到每日目标
-            </button>
-          </div>
-        )}
-      </div>
         </>
       )}
 
