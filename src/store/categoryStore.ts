@@ -4,6 +4,7 @@ import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { DEFAULT_FOOD_CATEGORIES } from '../types'
 import { useFoodStore } from './foodStore'
+import { useAuthStore } from './authStore'
 import { useToastStore } from './toastStore'
 
 interface CategoryState {
@@ -16,6 +17,8 @@ interface CategoryState {
 
 let unsubscribe: (() => void) | null = null
 
+const CATEGORY_DOC_REF = doc(db, 'settings', 'categories')
+
 export const useCategoryStore = create<CategoryState>()(
   persist(
     (set, get) => ({
@@ -23,13 +26,17 @@ export const useCategoryStore = create<CategoryState>()(
       loading: false,
 
       addCategory: async (name: string) => {
+        if (!useAuthStore.getState().isAdmin) {
+          useToastStore.getState().addToast('仅管理员可管理分类', { type: 'error' })
+          return
+        }
         const trimmed = name.trim()
         if (!trimmed || get().categories.includes(trimmed)) return
         const next = [...get().categories, trimmed]
         // Optimistic local update
         set({ categories: next })
         try {
-          await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
+          await setDoc(CATEGORY_DOC_REF, { categories: next }, { merge: true })
           useToastStore.getState().addToast(`分类「${trimmed}」已创建`, { type: 'success' })
         } catch (err) {
           console.error('addCategory error:', err)
@@ -38,6 +45,10 @@ export const useCategoryStore = create<CategoryState>()(
       },
 
       renameCategory: async (oldName: string, newName: string) => {
+        if (!useAuthStore.getState().isAdmin) {
+          useToastStore.getState().addToast('仅管理员可管理分类', { type: 'error' })
+          return
+        }
         const trimmed = newName.trim()
         if (!trimmed || oldName === trimmed) return
         if (get().categories.includes(trimmed)) {
@@ -49,7 +60,7 @@ export const useCategoryStore = create<CategoryState>()(
         // Optimistic local update
         set({ categories: next })
         try {
-          await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
+          await setDoc(CATEGORY_DOC_REF, { categories: next }, { merge: true })
 
           // Batch update all foods containing oldName
           const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(oldName))
@@ -69,11 +80,15 @@ export const useCategoryStore = create<CategoryState>()(
       },
 
       deleteCategory: async (name: string) => {
+        if (!useAuthStore.getState().isAdmin) {
+          useToastStore.getState().addToast('仅管理员可管理分类', { type: 'error' })
+          return
+        }
         const next = get().categories.filter((c) => c !== name)
         // Optimistic local update
         set({ categories: next })
         try {
-          await setDoc(doc(db, 'settings', 'categories'), { categories: next }, { merge: true })
+          await setDoc(CATEGORY_DOC_REF, { categories: next }, { merge: true })
 
           // Batch remove category from all foods
           const foodsToUpdate = useFoodStore.getState().foods.filter((f) => f.categories?.includes(name))
@@ -101,16 +116,26 @@ export const useCategoryStore = create<CategoryState>()(
 
 export function subscribeCategories() {
   if (unsubscribe) return
-  const docRef = doc(db, 'settings', 'categories')
   unsubscribe = onSnapshot(
-    docRef,
+    CATEGORY_DOC_REF,
     (snapshot) => {
       if (snapshot.exists() && Array.isArray(snapshot.data().categories)) {
         useCategoryStore.setState({ categories: snapshot.data().categories, loading: false })
       } else {
-        // Seed default categories doc if missing
-        setDoc(docRef, { categories: DEFAULT_FOOD_CATEGORIES }, { merge: true }).catch(console.error)
-        useCategoryStore.setState({ categories: DEFAULT_FOOD_CATEGORIES, loading: false })
+        // Doc doesn't exist yet — only an admin should seed it.
+        // Keep whatever is already in state (from persist/localStorage).
+        // If state also has nothing useful, fall back to defaults.
+        const current = useCategoryStore.getState().categories
+        if (current.length === 0) {
+          useCategoryStore.setState({ categories: DEFAULT_FOOD_CATEGORIES, loading: false })
+        } else {
+          useCategoryStore.setState({ loading: false })
+        }
+        // Admin auto-seeds the Firestore doc so other users get it
+        if (useAuthStore.getState().isAdmin) {
+          const toSeed = current.length > 0 ? current : DEFAULT_FOOD_CATEGORIES
+          setDoc(CATEGORY_DOC_REF, { categories: toSeed }, { merge: true }).catch(console.error)
+        }
       }
     },
     (err) => {
