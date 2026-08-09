@@ -5,6 +5,7 @@ import { useMealStore } from '../store/mealStore'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
 import { useFitnessGoalStore } from '../store/fitnessGoalStore'
+import { useUserProfileStore } from '../store/userProfileStore'
 import { useToastStore } from '../store/toastStore'
 import { sumNutrients } from '../lib/utils'
 import { adjustTargetsForExercise } from '../lib/nutrition'
@@ -24,6 +25,7 @@ export default function DailyLogPage() {
   const { meals } = useMealStore()
   const { goal, homeNutrientKeys } = useGoalStore()
   const { getActiveGoal } = useFitnessGoalStore()
+  const profile = useUserProfileStore((s) => s.profile)
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalTab, setAddModalTab] = useState<'food' | 'exercise'>('food')
   const [showAIQuickModal, setShowAIQuickModal] = useState(false)
@@ -128,8 +130,15 @@ export default function DailyLogPage() {
   const activeGoal = getActiveGoal(selectedDate)
   const calorieAdj = activeGoal?.calorieAdjustment ?? 0
 
-  const targets = (baseTargets.calories > 0 && (totalExerciseCalories > 0 || calorieAdj !== 0))
-    ? adjustTargetsForExercise(baseTargets, totalExerciseCalories, calorieAdj)
+  const targets = (baseTargets.calories > 0 && (totalExerciseCalories > 0 || activeGoal !== null))
+    ? adjustTargetsForExercise(
+        baseTargets,
+        totalExerciseCalories,
+        calorieAdj,
+        activeGoal?.type,
+        profile?.weightKg,
+        profile?.gender,
+      )
     : baseTargets
 
   const getEntryRef = (entry: LogEntry): Food | Meal | undefined => {

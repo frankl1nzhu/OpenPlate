@@ -4,6 +4,7 @@ import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
 import { useFitnessGoalStore } from '../store/fitnessGoalStore'
+import { useUserProfileStore } from '../store/userProfileStore'
 import { useScrollLock } from '../hooks/useScrollLock'
 import type { DailyLog, Nutrients } from '../types'
 import { EMPTY_NUTRIENTS } from '../types'
@@ -21,6 +22,7 @@ export default function NutritionReportModal({ onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const goal = useGoalStore((s) => s.goal)
   const fitnessGoals = useFitnessGoalStore((s) => s.goals)
+  const profile = useUserProfileStore((s) => s.profile)
   const [period, setPeriod] = useState<Period>('7days')
   const [loading, setLoading] = useState(true)
   const [logs, setLogs] = useState<DailyLog[]>([])
@@ -78,7 +80,14 @@ export default function NutritionReportModal({ onClose }: Props) {
     const activeFg = fitnessGoals.find((fg) => fg.startDate <= dateStr && fg.endDate >= dateStr)
     const fgAdj = activeFg ? activeFg.calorieAdjustment : 0
 
-    const dayTarget = adjustTargetsForExercise(baseTargets, exCalories, fgAdj)
+    const dayTarget = adjustTargetsForExercise(
+      baseTargets,
+      exCalories,
+      fgAdj,
+      activeFg?.type,
+      profile?.weightKg,
+      profile?.gender,
+    )
     dailyTargetsList.push(dayTarget)
   }
 

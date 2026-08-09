@@ -4,6 +4,7 @@ import { db } from '../lib/firebase'
 import { useAuthStore } from '../store/authStore'
 import { useGoalStore } from '../store/goalStore'
 import { useFitnessGoalStore } from '../store/fitnessGoalStore'
+import { useUserProfileStore } from '../store/userProfileStore'
 import { useScrollLock } from '../hooks/useScrollLock'
 import type { DailyLog } from '../types'
 import { NUTRIENT_LABELS, NUTRIENT_UNITS, EMPTY_NUTRIENTS } from '../types'
@@ -22,6 +23,7 @@ export default function NutritionTrendsModal({ onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const goal = useGoalStore((s) => s.goal)
   const fitnessGoals = useFitnessGoalStore((s) => s.goals)
+  const profile = useUserProfileStore((s) => s.profile)
   const [period, setPeriod] = useState<Period>('7days')
   const [metric, setMetric] = useState<MetricKey>('calories')
   const [loading, setLoading] = useState(true)
@@ -95,7 +97,14 @@ export default function NutritionTrendsModal({ onClose }: Props) {
     const fgAdj = activeFg ? activeFg.calorieAdjustment : 0
 
     const baseTargets = goal?.targets ?? EMPTY_NUTRIENTS
-    const dayTargets = adjustTargetsForExercise(baseTargets, exCalories, fgAdj)
+    const dayTargets = adjustTargetsForExercise(
+      baseTargets,
+      exCalories,
+      fgAdj,
+      activeFg?.type,
+      profile?.weightKg,
+      profile?.gender,
+    )
     let dayTarget = 0
     if (metric === 'protein') {
       dayTarget = (dayTargets.completeProtein + dayTargets.incompleteProtein) || dayTargets.protein || 0

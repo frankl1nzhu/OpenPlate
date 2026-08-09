@@ -1,4 +1,4 @@
-import type { Nutrients, ExerciseType, ExerciseIntensity } from '../types'
+import type { Nutrients, ExerciseType, ExerciseIntensity, FitnessGoalType } from '../types'
 import { EMPTY_NUTRIENTS } from '../types'
 
 // MET values: exercise type × intensity
@@ -62,11 +62,27 @@ export function calculateExerciseCalories(
 }
 
 /**
- * Generate recommended daily nutrient targets based on TDEE and body metrics.
+ * Protein per kg of body weight by gender and fitness goal
+ */
+export const PROTEIN_PER_KG: Record<'male' | 'female', Record<FitnessGoalType, number>> = {
+  male:   { bulk: 2.0, maintain: 1.8, cut: 2.2 },
+  female: { bulk: 1.8, maintain: 1.6, cut: 2.0 },
+}
+
+/**
+ * Fat per kg of body weight by gender and fitness goal
+ */
+export const FAT_PER_KG: Record<'male' | 'female', Record<FitnessGoalType, number>> = {
+  male:   { bulk: 1.0, maintain: 0.8, cut: 0.6 },
+  female: { bulk: 1.0, maintain: 0.9, cut: 0.8 },
+}
+
+/**
+ * Generate recommended daily nutrient targets based on TDEE, body metrics and fitness goal.
  *
  * Macros strategy:
- * - Protein: male 2.2g/kg, female 2.0g/kg (weight-based only); 80% complete, 20% incomplete
- * - Fat: male 1.2g/kg, female 1.4g/kg (weight-based only); subtypes 30/50/20
+ * - Protein (g/kg): male bulk 2.0 / maintain 1.8 / cut 2.2; female bulk 1.8 / maintain 1.6 / cut 2.0
+ * - Fat (g/kg): male bulk 1.0 / maintain 0.8 / cut 0.6; female bulk 1.0 / maintain 0.9 / cut 0.8
  * - Carbs: remaining calories after protein and fat
  * - Fiber: total kcal / 1000 × 14 g
  */
@@ -75,14 +91,15 @@ export function calculateRecommendedTargets(
   weightKg: number,
   gender: 'male' | 'female',
   age: number,
+  goal: FitnessGoalType = 'maintain',
 ): Nutrients {
   // Protein: weight-based only
-  const proteinPerKg = gender === 'male' ? 2.2 : 2.0
+  const proteinPerKg = PROTEIN_PER_KG[gender][goal]
   const totalProtein = Math.round(weightKg * proteinPerKg)
   const proteinCalories = totalProtein * 4
 
   // Fat: weight-based only
-  const fatPerKg = gender === 'male' ? 1.2 : 1.4
+  const fatPerKg = FAT_PER_KG[gender][goal]
   const totalFat = Math.round(weightKg * fatPerKg)
   const fatCalories = totalFat * 9
   const saturatedFat       = Math.round(totalFat * 0.30)
@@ -143,34 +160,64 @@ export function calculateRecommendedTargets(
 
 /**
  * Adjust daily targets based on exercise calories burned and fitness goal.
- * Fat and protein are weight-based and do NOT change.
+ * The saved daily goal is the maintain-weight baseline: protein/fat follow the
+ * "maintain" ratios only. When an active fitness goal (bulk/cut) exists, its
+ * protein/fat ratios are added ON TOP of the baseline (delta vs. maintain).
  * All extra (or reduced) calories are absorbed by carbs.
  */
 export function adjustTargetsForExercise(
   baseTargets: Nutrients,
   exerciseCalories: number,
   calorieAdjustment: number = 0,
+  goal?: FitnessGoalType,
+  weightKg?: number,
+  gender?: 'male' | 'female',
 ): Nutrients {
   const totalExtra = exerciseCalories + calorieAdjustment
-  if (totalExtra === 0) return baseTargets
+
+  const canAdjustMacros = goal && goal !== 'maintain' && weightKg && gender
+  const proteinDelta = canAdjustMacros
+    ? Math.round(weightKg * (PROTEIN_PER_KG[gender][goal] - PROTEIN_PER_KG[gender]['maintain']))
+    : 0
+  const fatDelta = canAdjustMacros
+    ? Math.round(weightKg * (FAT_PER_KG[gender][goal] - FAT_PER_KG[gender]['maintain']))
+    : 0
+
+  if (totalExtra === 0 && proteinDelta === 0 && fatDelta === 0) return baseTargets
 
   const newCalories = baseTargets.calories + totalExtra
 
-  // Fat and protein stay fixed (weight-based)
-  const fatCalories     = baseTargets.fat * 9
-  const proteinCalories = (baseTargets.completeProtein + baseTargets.incompleteProtein) * 4
+  const baseProtein = baseTargets.completeProtein + baseTargets.incompleteProtein
+  const newProtein = Math.max(0, baseProtein + proteinDelta)
+  const newFat = Math.max(0, baseTargets.fat + fatDelta)
 
   // Carbs absorb the remainder
-  const newCarbCalories = newCalories - fatCalories - proteinCalories
+  const newCarbCalories = newCalories - newFat * 9 - newProtein * 4
   const newCarbs = Math.round(Math.max(0, newCarbCalories / 4))
 
   // Fiber: totalKcal / 1000 × 14
   const newFiber = Math.round(newCalories / 1000 * 14)
 
-  return {
+  const result: Nutrients = {
     ...baseTargets,
     calories: Math.round(newCalories),
     carbs: newCarbs,
     fiber: newFiber,
   }
+
+  // Apply macro adjustments only when the fitness goal calls for them,
+  // keeping the exercise-only path byte-identical to before.
+  if (proteinDelta !== 0 || fatDelta !== 0) {
+    const proteinScale = baseProtein > 0 ? newProtein / baseProtein : 1
+    const fatScale = baseTargets.fat > 0 ? newFat / baseTargets.fat : 1
+    result.protein = newProtein
+    result.completeProtein = Math.round(baseTargets.completeProtein * proteinScale)
+    result.incompleteProtein = Math.round(baseTargets.incompleteProtein * proteinScale)
+    result.fat = newFat
+    result.saturatedFat = Math.round(baseTargets.saturatedFat * fatScale)
+    result.monounsaturatedFat = Math.round(baseTargets.monounsaturatedFat * fatScale)
+    result.polyunsaturatedFat = Math.round(baseTargets.polyunsaturatedFat * fatScale)
+  }
+
+  return result
 }

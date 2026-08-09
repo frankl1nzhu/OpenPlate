@@ -258,6 +258,7 @@ export default function SettingsPage() {
       profile.weightKg,
       profile.gender,
       profile.age,
+      'maintain',
     )
     setRecommendedTargets(rec)
   }
@@ -571,7 +572,7 @@ export default function SettingsPage() {
           {/* Daily Goals - display/edit mode */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-700">每日目标摄入</h3>
+          <h3 className="text-sm font-bold text-gray-700">每日维持体重目标摄入</h3>
           {!editingGoals && hasGoalValues && (
             <button
               type="button"
