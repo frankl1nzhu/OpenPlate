@@ -114,6 +114,10 @@ export default function DailyLogPage() {
     else groups.push({ mealIndex, entries: [entry] })
     return groups
   }, [])
+  mealGroups.sort((a, b) => a.mealIndex - b.mealIndex)
+  mealGroups.forEach((group) => {
+    group.entries.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+  })
 
   const getMealTitle = (index: number) => {
     const chineseNumbers = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']

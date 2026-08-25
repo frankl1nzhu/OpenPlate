@@ -21,6 +21,7 @@ interface DailyLogState {
   addEntries: (userId: string, entries: Omit<LogEntry, 'id'>[], date?: string) => Promise<void>
   updateEntries: (userId: string, updatedEntries: LogEntry[]) => Promise<void>
   removeEntry: (userId: string, entryId: string) => Promise<void>
+  removeEntries: (userId: string, entryIds: string[]) => Promise<void>
   addExercise: (userId: string, exercise: Omit<ExerciseEntry, 'id'>) => Promise<void>
   removeExercise: (userId: string, exerciseId: string) => Promise<void>
   copyLogToDate: (userId: string, sourceDate: string, targetDate: string) => Promise<void>
@@ -50,26 +51,45 @@ export const useDailyLogStore = create<DailyLogState>()(
       addEntry: async (userId, entry, explicitDate) => {
         const date = explicitDate ?? get().selectedDate
         const docId = `${userId}_${date}`
-        const newEntry: LogEntry = { ...entry, id: crypto.randomUUID() }
+        const current = get().currentLog
+        const existingEntries = current?.entries ?? []
+        const fallbackMealIndex = existingEntries.reduce((max, e, idx) => Math.max(max, e.mealIndex ?? (idx + 1)), 0) + 1
+        const newEntry: LogEntry = {
+          ...entry,
+          id: crypto.randomUUID(),
+          mealIndex: entry.mealIndex ?? fallbackMealIndex,
+        }
+        const updatedEntries = normalizeMealIndices([...existingEntries, newEntry])
         const ref = doc(db, 'dailyLogs', docId)
 
-        await runTransaction(db, async (tx) => {
-          const snap = await tx.get(ref)
-          const existing = snap.exists() ? snap.data() : {}
-          tx.set(ref, {
-            userId,
-            date,
-            entries: [...(existing.entries ?? []), newEntry],
-            exercises: existing.exercises ?? [],
-          })
-        })
-
         // Optimistic local update
-        const current = get().currentLog
-        const entries = [...(current?.entries ?? []), newEntry]
-        set({ currentLog: { id: docId, userId, date, entries, exercises: current?.exercises ?? [] }, loading: false })
+        set({ currentLog: { id: docId, userId, date, entries: updatedEntries, exercises: current?.exercises ?? [] }, loading: false })
         if (entry.type === 'food') {
           get().addRecentFood(entry.refId)
+        }
+
+        try {
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(ref)
+            const existing = snap.exists() ? snap.data() : {}
+            const txExistingEntries: LogEntry[] = existing.entries ?? []
+            const txFallbackMealIndex = txExistingEntries.reduce((max, e, idx) => Math.max(max, e.mealIndex ?? (idx + 1)), 0) + 1
+            const txNewEntry: LogEntry = {
+              ...newEntry,
+              mealIndex: entry.mealIndex ?? txFallbackMealIndex,
+            }
+            const txUpdated = normalizeMealIndices([...txExistingEntries, txNewEntry])
+            tx.set(ref, {
+              userId,
+              date,
+              entries: txUpdated,
+              exercises: existing.exercises ?? [],
+            })
+          })
+        } catch (err) {
+          console.error('addEntry error:', err)
+          if (current) set({ currentLog: current })
+          throw err
         }
       },
 
@@ -77,28 +97,49 @@ export const useDailyLogStore = create<DailyLogState>()(
         if (entriesToAdd.length === 0) return
         const date = explicitDate ?? get().selectedDate
         const docId = `${userId}_${date}`
-        const newEntries: LogEntry[] = entriesToAdd.map((entry) => ({ ...entry, id: crypto.randomUUID() }))
+        const current = get().currentLog
+        const existingEntries = current?.entries ?? []
+        const fallbackMealIndex = existingEntries.reduce((max, e, idx) => Math.max(max, e.mealIndex ?? (idx + 1)), 0) + 1
+
+        const newEntries: LogEntry[] = entriesToAdd.map((entry) => ({
+          ...entry,
+          id: crypto.randomUUID(),
+          mealIndex: entry.mealIndex ?? fallbackMealIndex,
+        }))
+        const updatedEntries = normalizeMealIndices([...existingEntries, ...newEntries])
         const ref = doc(db, 'dailyLogs', docId)
 
-        await runTransaction(db, async (tx) => {
-          const snap = await tx.get(ref)
-          const existing = snap.exists() ? snap.data() : {}
-          tx.set(ref, {
-            userId,
-            date,
-            entries: [...(existing.entries ?? []), ...newEntries],
-            exercises: existing.exercises ?? [],
-          })
-        })
-
-        const current = get().currentLog
-        const entries = [...(current?.entries ?? []), ...newEntries]
-        set({ currentLog: { id: docId, userId, date, entries, exercises: current?.exercises ?? [] }, loading: false })
+        // Optimistic local update
+        set({ currentLog: { id: docId, userId, date, entries: updatedEntries, exercises: current?.exercises ?? [] }, loading: false })
         entriesToAdd.forEach((entry) => {
           if (entry.type === 'food') {
             get().addRecentFood(entry.refId)
           }
         })
+
+        try {
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(ref)
+            const existing = snap.exists() ? snap.data() : {}
+            const txExistingEntries: LogEntry[] = existing.entries ?? []
+            const txFallbackMealIndex = txExistingEntries.reduce((max, e, idx) => Math.max(max, e.mealIndex ?? (idx + 1)), 0) + 1
+            const txNewEntries: LogEntry[] = newEntries.map((entry, idx) => ({
+              ...entry,
+              mealIndex: entriesToAdd[idx].mealIndex ?? txFallbackMealIndex,
+            }))
+            const txUpdated = normalizeMealIndices([...txExistingEntries, ...txNewEntries])
+            tx.set(ref, {
+              userId,
+              date,
+              entries: txUpdated,
+              exercises: existing.exercises ?? [],
+            })
+          })
+        } catch (err) {
+          console.error('addEntries error:', err)
+          if (current) set({ currentLog: current })
+          throw err
+        }
       },
 
       updateEntries: async (userId, updatedEntries) => {
@@ -116,9 +157,10 @@ export const useDailyLogStore = create<DailyLogState>()(
           }
           return e
         })
+        const updatedNormalized = normalizeMealIndices(merged)
 
         // Optimistic local update
-        set({ currentLog: { id: docId, userId, date, entries: merged, exercises: current?.exercises ?? [] }, loading: false })
+        set({ currentLog: { id: docId, userId, date, entries: updatedNormalized, exercises: current?.exercises ?? [] }, loading: false })
 
         try {
           await runTransaction(db, async (tx) => {
@@ -131,10 +173,11 @@ export const useDailyLogStore = create<DailyLogState>()(
               }
               return e
             })
+            const txUpdated = normalizeMealIndices(txMerged)
             tx.set(ref, {
               userId,
               date,
-              entries: txMerged,
+              entries: txUpdated,
               exercises: existing.exercises ?? [],
             })
           })
@@ -145,13 +188,15 @@ export const useDailyLogStore = create<DailyLogState>()(
         }
       },
 
-      removeEntry: async (userId, entryId) => {
+      removeEntries: async (userId, entryIds) => {
+        if (entryIds.length === 0) return
         const date = get().selectedDate
         const docId = `${userId}_${date}`
         const ref = doc(db, 'dailyLogs', docId)
+        const removeSet = new Set(entryIds)
 
         const current = get().currentLog
-        const filtered = (current?.entries ?? []).filter((e) => e.id !== entryId)
+        const filtered = (current?.entries ?? []).filter((e) => !removeSet.has(e.id))
         const updatedEntries = normalizeMealIndices(filtered)
 
         // Optimistic local update FIRST
@@ -161,7 +206,7 @@ export const useDailyLogStore = create<DailyLogState>()(
           await runTransaction(db, async (tx) => {
             const snap = await tx.get(ref)
             const existing = snap.exists() ? snap.data() : {}
-            const txFiltered = (existing.entries ?? []).filter((e: LogEntry) => e.id !== entryId)
+            const txFiltered = (existing.entries ?? []).filter((e: LogEntry) => !removeSet.has(e.id))
             const txUpdated = normalizeMealIndices(txFiltered)
             tx.set(ref, {
               userId,
@@ -171,9 +216,13 @@ export const useDailyLogStore = create<DailyLogState>()(
             })
           })
         } catch (err) {
-          console.error('removeEntry error:', err)
+          console.error('removeEntries error:', err)
           if (current) set({ currentLog: current })
         }
+      },
+
+      removeEntry: async (userId, entryId) => {
+        return get().removeEntries(userId, [entryId])
       },
 
       addExercise: async (userId, exercise) => {

@@ -172,12 +172,11 @@ export default function AddEntryModal({ onClose, defaultTab = 'food', mealIndex:
     setSubmitting(true)
     try {
       const targetMealIndex = existingMealIndex ?? (() => {
-        const existingMealGroups = (currentLog?.entries ?? []).reduce<number[]>((acc, entry, index) => {
+        const maxMealIndex = (currentLog?.entries ?? []).reduce<number>((max, entry, index) => {
           const mIdx = entry.mealIndex ?? (index + 1)
-          if (!acc.includes(mIdx)) acc.push(mIdx)
-          return acc
-        }, [])
-        return existingMealGroups.length + 1
+          return Math.max(max, mIdx)
+        }, 0)
+        return maxMealIndex + 1
       })()
       const timestamp = Date.now()
       const entries = await Promise.all(drafts.map(async (draft, index) => {

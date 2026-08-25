@@ -62,16 +62,28 @@ export function calculateFoodNutrients(food: Food, quantity: number, unitName?: 
 
 // Normalize mealIndex values so remaining meal groups are sequentially numbered 1, 2, 3...
 export function normalizeMealIndices(entries: LogEntry[]): LogEntry[] {
+  if (!entries || entries.length === 0) return []
+
+  // Collect distinct mealIndex values sorted in numeric ascending order
+  const distinctMealIndices = Array.from(
+    new Set(
+      entries
+        .map((e, idx) => e.mealIndex ?? (idx + 1))
+        .filter((val): val is number => typeof val === 'number' && !isNaN(val))
+    )
+  ).sort((a, b) => a - b)
+
   const indexMap = new Map<number, number>()
-  let counter = 1
-  return entries.map((entry, idx) => {
-    const rawMealIndex = entry.mealIndex ?? (idx + 1)
-    if (!indexMap.has(rawMealIndex)) {
-      indexMap.set(rawMealIndex, counter++)
-    }
-    const newMealIndex = indexMap.get(rawMealIndex)!
-    if (entry.mealIndex === newMealIndex) return entry
-    return { ...entry, mealIndex: newMealIndex }
+  distinctMealIndices.forEach((rawIndex, newIdx) => {
+    indexMap.set(rawIndex, newIdx + 1)
   })
+
+  return entries
+    .map((entry, idx) => {
+      const rawMealIndex = entry.mealIndex ?? (idx + 1)
+      const newMealIndex = indexMap.get(rawMealIndex) ?? (idx + 1)
+      return { ...entry, mealIndex: newMealIndex }
+    })
+    .sort((a, b) => (a.mealIndex ?? 0) - (b.mealIndex ?? 0) || (a.timestamp ?? 0) - (b.timestamp ?? 0))
 }
 

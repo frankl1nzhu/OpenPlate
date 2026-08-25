@@ -22,7 +22,7 @@ export default function EditMealModal({ mealEntries, mealTitle, onClose }: Props
   useScrollLock(true)
   const { foods } = useFoodStore()
   const { meals } = useMealStore()
-  const { updateEntries, removeEntry } = useDailyLogStore()
+  const { updateEntries, removeEntries } = useDailyLogStore()
   const { homeNutrientKeys } = useGoalStore()
   const user = useAuthStore((s) => s.user)
   const addToast = useToastStore((s) => s.addToast)
@@ -136,9 +136,9 @@ export default function EditMealModal({ mealEntries, mealTitle, onClose }: Props
     if (!user) return
     setSubmitting(true)
     try {
-      // Remove entries that were deleted
-      for (const id of removedIds) {
-        await removeEntry(user.uid, id)
+      // Remove entries that were deleted in a single batch
+      if (removedIds.size > 0) {
+        await removeEntries(user.uid, Array.from(removedIds))
       }
 
       // Update remaining entries with recalculated nutrients
